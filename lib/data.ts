@@ -1,4 +1,5 @@
 export type Space = {
+  id: string;
   slug: string;
   name: string;
   zone: string;
@@ -16,6 +17,7 @@ export type Space = {
 
 export const spaces: Space[] = [
   {
+    id: "00000000-0000-4000-8000-000000000001",
     slug: "midnight-loft",
     name: "Midnight Loft",
     zone: "Guadalajara, Jalisco",
@@ -44,6 +46,7 @@ export const spaces: Space[] = [
     ],
   },
   {
+    id: "00000000-0000-4000-8000-000000000002",
     slug: "the-velvet-room",
     name: "The Velvet Room",
     zone: "Zapopan, Jalisco",
@@ -71,6 +74,7 @@ export const spaces: Space[] = [
     ],
   },
   {
+    id: "00000000-0000-4000-8000-000000000003",
     slug: "obsidian-villa",
     name: "Obsidian Villa",
     zone: "Guadalajara, Jalisco",
@@ -101,26 +105,36 @@ export const spaces: Space[] = [
 
 export const experiences = [
   {
+    id: "10000000-0000-4000-8000-000000000001",
+    slug: "private-jacuzzi-experience",
     name: "Private Jacuzzi Experience",
     description: "Warm water, low light and complete privacy.",
     image: "/images/experience-jacuzzi.png",
   },
   {
+    id: "10000000-0000-4000-8000-000000000002",
+    slug: "couples-escape",
     name: "Couples Escape",
     description: "A private setting designed for two.",
     image: "/images/experience-couples.png",
   },
   {
+    id: "10000000-0000-4000-8000-000000000003",
+    slug: "themed-experience",
     name: "Themed Experience",
     description: "Immersive rooms with a distinct point of view.",
     image: "/images/experience-themed.png",
   },
   {
+    id: "10000000-0000-4000-8000-000000000004",
+    slug: "private-content-studio",
     name: "Private Content Studio",
     description: "Controlled light, discreet access and creator-ready sets.",
     image: "/images/experience-studio.png",
   },
   {
+    id: "10000000-0000-4000-8000-000000000005",
+    slug: "sensory-experience",
     name: "Sensory Experience",
     description: "Atmosphere, sound and detail curated for the night.",
     image: "/images/experience-sensory.png",
@@ -129,6 +143,8 @@ export const experiences = [
 
 export const events = [
   {
+    id: "20000000-0000-4000-8000-000000000001",
+    slug: "midnight-masquerade",
     name: "Midnight Masquerade",
     date: "Oct 18",
     city: "Guadalajara",
@@ -139,6 +155,8 @@ export const events = [
     image: "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?auto=format&fit=crop&w=900&q=85",
   },
   {
+    id: "20000000-0000-4000-8000-000000000002",
+    slug: "couples-only-night",
     name: "Couples Only Night",
     date: "Nov 02",
     city: "Zapopan",
@@ -149,6 +167,8 @@ export const events = [
     image: "https://images.unsplash.com/photo-1505236858219-8359eb29e329?auto=format&fit=crop&w=900&q=85",
   },
   {
+    id: "20000000-0000-4000-8000-000000000003",
+    slug: "after-dark-social",
     name: "After Dark Social",
     date: "Nov 21",
     city: "Guadalajara",

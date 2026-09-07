@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { AgeGate } from "@/components/AgeGate";
+import { ToastProvider } from "@/components/providers/ToastProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,8 +14,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="font-sans">{children}</body>
+    <html lang="en" data-scroll-behavior="smooth">
+      <body className="font-sans">
+        <ToastProvider>
+          <AgeGate />
+          {children}
+        </ToastProvider>
+      </body>
     </html>
   );
 }

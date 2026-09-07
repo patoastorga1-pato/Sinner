@@ -2,11 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 
 const columns = [
-  { title: "Explore", links: ["Spaces", "Experiences", "Events"] },
-  { title: "Hosting", links: ["Become a Host", "Host standards", "Resources"] },
-  { title: "Safety", links: ["Adult verification", "Privacy", "Trust center"] },
-  { title: "Company", links: ["About SINNER", "Journal", "Contact"] },
-  { title: "Legal", links: ["Terms", "Privacy policy", "Community rules"] },
+  { title: "Explore", links: [["Spaces", "/spaces"], ["Experiences", "/experiences"], ["Events", "/events"]] },
+  { title: "Hosting", links: [["Become a Host", "/host/onboarding"], ["Host standards", "/host/onboarding"], ["Resources", "/host/onboarding"]] },
+  { title: "Safety", links: [["Adult verification", "/profile"], ["Privacy", "/privacy"], ["Trust center", "/privacy"]] },
+  { title: "Company", links: [["About SINNER", "/"], ["Journal", "/experiences"], ["Contact", "/settings"]] },
+  { title: "Legal", links: [["Terms", "/terms"], ["Privacy policy", "/privacy"], ["Community rules", "/terms"]] },
 ];
 
 export function Footer() {
@@ -27,9 +27,9 @@ export function Footer() {
               <div key={column.title}>
                 <h3 className="text-sm font-semibold text-sinner-ivory">{column.title}</h3>
                 <div className="mt-4 grid gap-3 text-sm text-sinner-mist">
-                  {column.links.map((link) => (
-                    <Link key={link} href="#" className="transition hover:text-sinner-goldSoft">
-                      {link}
+                  {column.links.map(([label, href]) => (
+                    <Link key={label} href={href} className="transition hover:text-sinner-goldSoft">
+                      {label}
                     </Link>
                   ))}
                 </div>

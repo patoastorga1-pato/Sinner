@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -21,17 +22,17 @@ import { Header } from "@/components/Header";
 import { SearchBar } from "@/components/SearchBar";
 import { SectionTitle } from "@/components/SectionTitle";
 import { SpaceCard } from "@/components/SpaceCard";
-import { events, experiences, spaces } from "@/lib/data";
+import { getEvents, getExperiences, getFavoriteSpaceIds, getFeaturedSpaces } from "@/lib/data-access/marketplace";
 
 const categories = [
-  { label: "Private Suites", icon: BedDouble },
-  { label: "Jacuzzi", icon: Bath },
-  { label: "Themed Rooms", icon: Sparkles },
-  { label: "Creator Friendly", icon: Camera },
-  { label: "Playrooms", icon: Gem },
-  { label: "Villas", icon: Building2 },
-  { label: "Group Friendly", icon: Users },
-  { label: "Events", icon: PartyPopper },
+  { label: "Private Suites", href: "/spaces?type=private-suite", icon: BedDouble },
+  { label: "Jacuzzi", href: "/spaces?amenities=jacuzzi", icon: Bath },
+  { label: "Themed Rooms", href: "/spaces?type=playroom", icon: Sparkles },
+  { label: "Creator Friendly", href: "/spaces?creatorFriendly=true", icon: Camera },
+  { label: "Playrooms", href: "/spaces?type=playroom", icon: Gem },
+  { label: "Villas", href: "/spaces?type=villa", icon: Building2 },
+  { label: "Group Friendly", href: "/spaces?groupFriendly=true", icon: Users },
+  { label: "Events", href: "/events", icon: PartyPopper },
 ];
 
 const privacy = [
@@ -49,16 +50,26 @@ const experienceLayout = [
   "lg:col-span-6",
 ];
 
-export default function Home() {
+export default async function Home() {
+  const [spaces, experiences, events, favorites] = await Promise.all([
+    getFeaturedSpaces(3),
+    getExperiences(),
+    getEvents(),
+    getFavoriteSpaceIds(),
+  ]);
+
   return (
     <main className="overflow-x-clip">
       <Header />
 
       <section className="relative min-h-[620px] overflow-hidden sm:min-h-[680px] lg:min-h-[720px]">
-        <img
+        <Image
           src="/images/hero-sinner-night.png"
           alt="Private luxury suite at night with violet ambient lighting"
-          className="absolute inset-0 h-full w-full object-cover object-[62%_center]"
+          fill
+          preload
+          sizes="100vw"
+          className="object-cover object-[62%_center]"
         />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,6,9,0.92)_0%,rgba(7,6,9,0.6)_52%,rgba(7,6,9,0.32)_100%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(0deg,#070609_0%,rgba(7,6,9,0.08)_44%,rgba(7,6,9,0.42)_100%)]" />
@@ -87,13 +98,14 @@ export default function Home() {
           {categories.map((category) => {
             const Icon = category.icon;
             return (
-              <button
+              <Link
                 key={category.label}
+                href={category.href}
                 className="flex min-w-fit items-center gap-2.5 rounded-full border border-white/[0.09] bg-sinner-coal/90 px-4 py-2.5 text-sm text-sinner-mist shadow-sm backdrop-blur transition duration-200 hover:border-sinner-gold/35 hover:bg-sinner-panel hover:text-sinner-goldSoft"
               >
                 <Icon size={16} />
                 {category.label}
-              </button>
+              </Link>
             );
           })}
         </div>
@@ -106,8 +118,8 @@ export default function Home() {
           copy="Premium rooms, villas and studios with clear rules, hourly booking and discreet access."
         />
         <div className="grid gap-6 md:grid-cols-3">
-          {spaces.map((space) => (
-            <SpaceCard key={space.slug} space={space} />
+          {spaces.map((space, index) => (
+            <SpaceCard key={space.slug} space={space} initialFavorite={favorites.ids.includes(space.id)} authenticated={favorites.authenticated} priority={index === 0} />
           ))}
         </div>
       </section>
@@ -123,10 +135,10 @@ export default function Home() {
             {experiences.map((experience, index) => (
               <Link
                 key={experience.name}
-                href="/spaces"
+                href={`/experiences/${experience.slug}`}
                 className={`group relative min-h-[280px] overflow-hidden rounded-2xl ${experienceLayout[index]}`}
               >
-                <img src={experience.image} alt={experience.name} className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
+                <Image src={experience.image} alt={experience.name} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover transition duration-300 group-hover:scale-[1.02]" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/35 to-black/5" />
                 <div className="absolute inset-0 bg-sinner-plum/10 transition duration-300 group-hover:bg-sinner-plum/20" />
                 <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-5 p-6 sm:p-7">
@@ -155,9 +167,9 @@ export default function Home() {
         />
         <div className="grid gap-6 md:grid-cols-3">
           {events.map((event) => (
-            <article key={event.name} className="group overflow-hidden rounded-2xl bg-sinner-panel shadow-card transition duration-300 hover:-translate-y-1">
+            <Link key={event.name} href={`/events/${event.slug}`} className="group overflow-hidden rounded-2xl bg-sinner-panel shadow-card transition duration-300 hover:-translate-y-1">
               <div className="relative aspect-[4/3] overflow-hidden">
-                <img src={event.image} alt={event.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
+                <Image src={event.image} alt={event.name} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition duration-300 group-hover:scale-[1.02]" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
                 <span className="absolute left-4 top-4 rounded-full border border-white/15 bg-black/55 px-3 py-1.5 text-xs font-medium text-sinner-ivory backdrop-blur-xl">
                   {event.badge}
@@ -175,7 +187,7 @@ export default function Home() {
                   <span className="text-sinner-goldSoft">{event.availability}</span>
                 </div>
               </div>
-            </article>
+            </Link>
           ))}
         </div>
       </section>
