@@ -81,6 +81,7 @@ function mapRpcCard(row: UnknownRow): SpaceCardData {
     state: String(row.state ?? ""),
     country: String(row.country ?? "Mexico"),
     approximateLocation: String(row.approximate_location ?? [row.city, row.state].filter(Boolean).join(", ")),
+    timezone: String(row.timezone ?? "America/Mexico_City"),
     maxGuests: asNumber(row.max_guests, 1),
     hourlyPrice: asNullableNumber(row.hourly_price),
     overnightPrice: asNullableNumber(row.overnight_price),
@@ -302,7 +303,7 @@ async function fetchSpaceDetail(field: "slug" | "id", value: string): Promise<Sp
   if (!supabase) return fixture;
 
   const detailSelect = `
-    id,host_id,name,slug,short_description,description,space_type,city,state,country,approximate_location,
+    id,host_id,name,slug,short_description,description,space_type,city,state,country,approximate_location,timezone,
     max_guests,hourly_price,overnight_price,full_day_price,cleaning_fee,minimum_hours,privacy_score,
     instant_booking,creator_friendly,group_friendly,events_allowed,featured,published_at,rating_average,review_count,
     cancellation_policy,check_in_notes,minimum_booking_notice_minutes,buffer_minutes,house_rules,
@@ -381,6 +382,7 @@ async function fetchSpaceDetail(field: "slug" | "id", value: string): Promise<Sp
     state: String(row.state ?? ""),
     country: String(row.country ?? "Mexico"),
     approximateLocation: String(row.approximate_location ?? [row.city, row.state].filter(Boolean).join(", ")),
+    timezone: String(row.timezone ?? "America/Mexico_City"),
     maxGuests,
     hourlyPrice: asNullableNumber(row.hourly_price),
     overnightPrice: asNullableNumber(row.overnight_price),

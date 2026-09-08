@@ -12,6 +12,7 @@ export type BookingStatus =
   | "confirmed"
   | "completed"
   | "cancelled"
+  | "expired"
   | "declined"
   | "refunded"
   | "disputed";
@@ -54,6 +55,8 @@ export const notificationTypes = [
   "booking_declined",
   "booking_cancelled",
   "booking_confirmed",
+  "booking_hold_expiring",
+  "booking_expired",
   "new_message",
   "new_review",
   "event_reminder",
@@ -63,4 +66,3 @@ export const notificationTypes = [
 ] as const;
 
 export type NotificationType = (typeof notificationTypes)[number];
-

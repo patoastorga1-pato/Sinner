@@ -1,4 +1,4 @@
-# SINNER Supabase: fases 1 y 2
+# SINNER Supabase: fases 1, 2 y 3
 
 Este paquete instala la base de datos de desarrollo desde las migraciones que ya
 son la fuente de verdad del repositorio. El archivo combinado es generado; no se
@@ -36,6 +36,35 @@ Los tres usuarios usan la contrasena de desarrollo `SinnerDemo2026!`:
 - `guest.two@sinner.local`
 
 No uses estas cuentas ni este seed en produccion.
+
+## Fase 3: Booking Engine
+
+Si fases 1 y 2 ya estan instaladas, ejecuta estos archivos en este orden:
+
+1. `SINNER_PHASE_3_STEP_1_ENUMS.sql`
+2. `SINNER_PHASE_3_BOOKING_ENGINE.sql`
+3. `verify_phase_3.sql`
+
+El primer archivo agrega el status `expired` al enum existente. Es intencional
+ejecutarlo separado para que PostgreSQL pueda usar ese valor en funciones,
+constraints y seed posteriores sin errores transaccionales.
+
+Despues de esos pasos, el seed demo de Fase 3 es opcional. Para cargar
+requests pendientes, holds activos, holds expirados y cancelaciones de prueba,
+ejecuta `SINNER_PHASE_3_DEMO_SEED.sql` desde esta carpeta. No lo ejecutes en datos reales de
+produccion.
+
+Resultado esperado:
+
+- `spaces.timezone` existe y cada espacio usa una timezone IANA.
+- `bookings` tiene `booking_reference`, `booking_type`, snapshots de precio,
+  `hold_expires_at`, `idempotency_key` y buffer snapshot.
+- `booking_events` existe y los usuarios no pueden modificarlo directamente.
+- Los RPCs `create_booking_request`, `approve_booking_request`,
+  `decline_booking_request`, `cancel_booking_before_payment` y
+  `expire_booking_holds` existen.
+- La constraint `bookings_no_active_overlap` bloquea solapes de
+  `payment_pending` y `confirmed`.
 
 ## Regenerar el archivo combinado
 

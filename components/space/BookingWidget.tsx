@@ -36,11 +36,11 @@ export function BookingWidget({ space, authenticated, initialSelection }: { spac
       if (!response.ok || !result.available) return;
       const params = new URLSearchParams({ space_id: space.id, date: selection.date, start: selection.start, duration: String(selection.duration), guests: String(selection.guests), mode: selection.mode });
       if (!authenticated) {
-        const returnPath = `/spaces/${space.slug}?${params.toString()}`;
+        const returnPath = `/book/${space.id}?${params.toString()}`;
         router.push(`/login?redirect=${encodeURIComponent(returnPath)}`);
         return;
       }
-      router.push(`/checkout/preview?${params.toString()}`);
+      router.push(`/book/${space.id}?${params.toString()}`);
     } catch {
       setAvailability({ available: false, reason: "invalid", message: "Availability could not be checked. Please try again." });
     } finally {
@@ -60,7 +60,7 @@ export function BookingWidget({ space, authenticated, initialSelection }: { spac
         ] as const).map(([value, label, price]) => <button key={value} type="button" disabled={price === null} aria-pressed={mode === value} onClick={() => { setMode(value); setAvailability(null); }} className={`min-h-10 rounded-md px-2 text-xs transition ${mode === value ? "bg-sinner-gold text-black" : "text-sinner-mist hover:text-white"} disabled:cursor-not-allowed disabled:opacity-35`}>{label}</button>)}</div></fieldset>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-          <label className="flex items-center gap-3 rounded-xl border hairline bg-black/30 px-4 py-3"><CalendarDays size={18} className="text-sinner-gold" /><span className="min-w-0 flex-1"><span className="block text-[0.65rem] font-semibold uppercase text-sinner-mist/60">Date</span><input required type="date" min={getLocalDateInputValue()} value={date} onChange={(event) => { setDate(event.target.value); setAvailability(null); }} className="mt-1 w-full bg-transparent text-sm text-white outline-none [color-scheme:dark]" /></span></label>
+          <label className="flex items-center gap-3 rounded-xl border hairline bg-black/30 px-4 py-3"><CalendarDays size={18} className="text-sinner-gold" /><span className="min-w-0 flex-1"><span className="block text-[0.65rem] font-semibold uppercase text-sinner-mist/60">Date</span><input required type="date" min={getLocalDateInputValue(new Date(), space.timezone)} value={date} onChange={(event) => { setDate(event.target.value); setAvailability(null); }} className="mt-1 w-full bg-transparent text-sm text-white outline-none [color-scheme:dark]" /></span></label>
           <label className="flex items-center gap-3 rounded-xl border hairline bg-black/30 px-4 py-3"><Clock size={18} className="text-sinner-gold" /><span className="min-w-0 flex-1"><span className="block text-[0.65rem] font-semibold uppercase text-sinner-mist/60">Start time</span><select required value={start} onChange={(event) => { setStart(event.target.value); setAvailability(null); }} className="mt-1 w-full bg-transparent text-sm text-white outline-none">{startTimes.map((time) => <option key={time} value={time} className="bg-sinner-coal">{time}</option>)}</select></span></label>
           {mode === "hourly" ? <label className="flex items-center gap-3 rounded-xl border hairline bg-black/30 px-4 py-3"><Clock size={18} className="text-sinner-gold" /><span className="min-w-0 flex-1"><span className="block text-[0.65rem] font-semibold uppercase text-sinner-mist/60">Duration</span><select value={duration} onChange={(event) => { setDuration(Number(event.target.value)); setAvailability(null); }} className="mt-1 w-full bg-transparent text-sm text-white outline-none">{Array.from({ length: 13 - space.minimumHours }, (_, index) => index + space.minimumHours).map((hours) => <option key={hours} value={hours} className="bg-sinner-coal">{hours} {hours === 1 ? "hour" : "hours"}</option>)}</select></span></label> : <div className="flex items-center gap-3 rounded-xl border hairline bg-black/30 px-4 py-3 text-sm text-sinner-mist"><Clock size={18} className="text-sinner-gold" />{mode === "overnight" ? "12-hour overnight estimate" : "24-hour full-day estimate"}</div>}
           <label className="flex items-center gap-3 rounded-xl border hairline bg-black/30 px-4 py-3"><Users size={18} className="text-sinner-gold" /><span className="min-w-0 flex-1"><span className="block text-[0.65rem] font-semibold uppercase text-sinner-mist/60">Guests</span><select value={guests} onChange={(event) => { setGuests(Number(event.target.value)); setAvailability(null); }} className="mt-1 w-full bg-transparent text-sm text-white outline-none">{Array.from({ length: space.maxGuests }, (_, index) => index + 1).map((count) => <option key={count} value={count} className="bg-sinner-coal">{count} {count === 1 ? "guest" : "guests"}</option>)}</select></span></label>
@@ -70,7 +70,7 @@ export function BookingWidget({ space, authenticated, initialSelection }: { spac
 
         {availability ? <p aria-live="polite" className={`mt-4 flex items-start gap-2 text-sm ${availability.available ? "text-emerald-300" : "text-rose-300"}`}>{availability.available ? <CheckCircle2 size={17} className="mt-0.5 shrink-0" /> : null}{availability.message}</p> : null}
         <button type="submit" disabled={pending || !estimate} className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-sinner-gold px-6 py-3 font-semibold text-sinner-black transition hover:bg-sinner-goldSoft disabled:cursor-not-allowed disabled:opacity-55">{pending ? <LoaderCircle size={18} className="animate-spin" /> : null}{pending ? "Checking..." : "Continue"}</button>
-        <p className="mt-4 text-center text-xs leading-5 text-sinner-mist/75">Estimate only. No reservation or payment is created in this phase.</p>
+        <p className="mt-4 text-center text-xs leading-5 text-sinner-mist/75">{space.instantBooking ? "Creates a temporary hold. Payment confirmation arrives in a future phase." : "Request to book. The host reviews before any hold is created."}</p>
       </form>
     </aside>
   );

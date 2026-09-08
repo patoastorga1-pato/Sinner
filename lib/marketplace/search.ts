@@ -65,9 +65,9 @@ function validTime(value: string) {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(value) ? value : "";
 }
 
-export function getLocalDateInputValue(date = new Date()) {
+export function getLocalDateInputValue(date = new Date(), timezone = "America/Mexico_City") {
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Mexico_City",
+    timeZone: timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

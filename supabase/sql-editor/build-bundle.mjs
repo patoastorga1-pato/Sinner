@@ -74,3 +74,31 @@ commit;
 
 await mkdir(sqlEditorDir, { recursive: true });
 for (const bundle of bundles) await buildBundle(bundle);
+
+await writeFile(
+  resolve(sqlEditorDir, "SINNER_PHASE_3_STEP_1_ENUMS.sql"),
+  `-- SINNER Phase 3, Step 1.
+-- Run this first in Supabase SQL Editor, then run SINNER_PHASE_3_BOOKING_ENGINE.sql.
+
+do $$
+begin
+  alter type public.booking_status add value if not exists 'expired' after 'cancelled';
+exception
+  when duplicate_object then null;
+end;
+$$;
+`,
+  "utf8",
+);
+
+await writeFile(
+  resolve(sqlEditorDir, "SINNER_PHASE_3_BOOKING_ENGINE.sql"),
+  await readFile(resolve(projectRoot, "supabase/migrations/20260907230000_booking_engine_phase_3.sql"), "utf8"),
+  "utf8",
+);
+
+await writeFile(
+  resolve(sqlEditorDir, "SINNER_PHASE_3_DEMO_SEED.sql"),
+  await readFile(resolve(projectRoot, "supabase/phase3_seed.sql"), "utf8"),
+  "utf8",
+);

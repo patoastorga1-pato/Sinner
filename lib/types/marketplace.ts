@@ -100,6 +100,7 @@ export type SpaceCardData = {
   state: string;
   country: string;
   approximateLocation: string;
+  timezone: string;
   maxGuests: number;
   hourlyPrice: number | null;
   overnightPrice: number | null;
