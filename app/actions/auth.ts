@@ -180,11 +180,17 @@ export async function becomeHostAction() {
   const { data } = await supabase.auth.getUser();
   if (!data.user) redirect("/login?redirect=/host/onboarding");
 
-  const { error } = await supabase.rpc("request_host_role");
+  const { data: requestData, error } = await supabase.rpc("request_host_role", {
+    p_request_note: null,
+  });
   if (error) redirect(withMessage("/host/onboarding", "error", error.message));
 
   revalidatePath("/", "layout");
-  redirect("/host/dashboard?success=Host+access+activated.");
+  revalidatePath("/host/onboarding");
+  revalidatePath("/admin");
+  const row = Array.isArray(requestData) ? requestData[0] : requestData;
+  if (row?.status === "approved") redirect("/host/dashboard?success=Host+access+active.");
+  redirect("/host/onboarding?success=Host+request+submitted.+An+admin+will+review+it.");
 }
 
 export async function markAllNotificationsReadAction() {

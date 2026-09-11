@@ -1,6 +1,7 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type UserRole = "guest" | "host" | "admin";
+export type HostApplicationStatus = "pending" | "approved" | "rejected" | "suspended";
 export type VerificationStatus = "unverified" | "pending" | "verified" | "rejected";
 export type SpaceStatus = "draft" | "pending_review" | "approved" | "rejected" | "suspended";
 export type AvailabilityStatus = "available" | "blocked" | "reserved";
@@ -47,6 +48,19 @@ export interface NotificationRecord {
   read_at: string | null;
   data: Json;
   created_at: string;
+}
+
+export interface HostApplicationRecord {
+  id: string;
+  user_id: string;
+  status: HostApplicationStatus;
+  applicant_email: string | null;
+  request_note: string | null;
+  decision_note: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  requested_at: string;
+  updated_at: string;
 }
 
 export const notificationTypes = [

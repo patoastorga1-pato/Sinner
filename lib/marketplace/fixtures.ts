@@ -432,7 +432,7 @@ export const developmentSpaces: SpaceDetailData[] = [
     slug: "suite-amatista",
     name: "Suite Amatista",
     shortDescription: "An accessible private suite with bathtub and contactless arrival.",
-    description: "A polished suite near the Guadalajara metropolitan area with contactless access, blackout curtains and a calm bathroom designed for private hourly stays.",
+    description: "A polished suite in Angelópolis with contactless access, blackout curtains and a calm bathroom designed for private hourly stays.",
     spaceType: "Private Suite",
     city: "Puebla",
     state: "Puebla",

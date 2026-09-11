@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { NotificationRecord, Profile } from "@/lib/types/database";
+import type { HostApplicationRecord, NotificationRecord, Profile } from "@/lib/types/database";
 
 export async function getCurrentProfile() {
   const supabase = await createClient();
@@ -27,4 +27,17 @@ export async function getNotifications() {
     .limit(50);
 
   return (data ?? []) as NotificationRecord[];
+}
+
+export async function getCurrentHostApplication(userId: string) {
+  const supabase = await createClient();
+  if (!supabase) return null;
+
+  const { data } = await supabase
+    .from("host_applications")
+    .select("id,user_id,status,applicant_email,request_note,decision_note,reviewed_by,reviewed_at,requested_at,updated_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  return data as HostApplicationRecord | null;
 }
