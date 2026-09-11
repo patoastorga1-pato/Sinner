@@ -37,7 +37,7 @@ security definer
 set search_path = ''
 as $$
 begin
-  if lower(coalesce(new.email, '')) = 'sinner.adult@gmail.com' then
+  if lower(coalesce(new.email, '')) = 'sinner.adults@gmail.com' then
     insert into public.user_roles(user_id, role)
     values (new.id, 'admin')
     on conflict (user_id, role) do nothing;
@@ -54,7 +54,7 @@ for each row execute function private.assign_primary_admin_role();
 insert into public.user_roles(user_id, role)
 select u.id, 'admin'
 from auth.users u
-where lower(coalesce(u.email, '')) = 'sinner.adult@gmail.com'
+where lower(coalesce(u.email, '')) = 'sinner.adults@gmail.com'
 on conflict (user_id, role) do nothing;
 
 insert into public.host_applications(

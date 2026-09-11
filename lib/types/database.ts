@@ -21,6 +21,9 @@ export type ListingStatus = "draft" | "pending_review" | "approved" | "rejected"
 export type EventVisibility = "public" | "private" | "invite_only";
 export type TicketStatus = "valid" | "used" | "cancelled" | "refunded";
 export type ReportStatus = "open" | "reviewing" | "resolved" | "dismissed";
+export type SupportTicketStatus = "open" | "in_progress" | "resolved" | "closed";
+export type PaymentRecordStatus = "pending" | "confirmed" | "failed" | "refunded" | "disputed";
+export type PayoutRecordStatus = "pending" | "available" | "paid" | "cancelled";
 
 export interface Profile {
   id: string;
@@ -48,6 +51,52 @@ export interface NotificationRecord {
   read_at: string | null;
   data: Json;
   created_at: string;
+}
+
+export interface SupportTicketRecord {
+  id: string;
+  user_id: string;
+  subject: string;
+  category: string;
+  description: string;
+  status: SupportTicketStatus;
+  admin_response: string | null;
+  assigned_admin_id: string | null;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaymentRecord {
+  id: string;
+  booking_id: string;
+  guest_id: string;
+  space_id: string;
+  provider: string;
+  provider_reference: string | null;
+  status: PaymentRecordStatus;
+  gross_amount: number;
+  platform_fee: number;
+  host_net_amount: number;
+  currency: string;
+  metadata: Json;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PayoutRecord {
+  id: string;
+  host_id: string;
+  payment_id: string | null;
+  status: PayoutRecordStatus;
+  gross_amount: number;
+  platform_fee: number;
+  net_amount: number;
+  currency: string;
+  paid_at: string | null;
+  metadata: Json;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface HostApplicationRecord {

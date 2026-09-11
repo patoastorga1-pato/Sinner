@@ -55,6 +55,13 @@ export type BookingDetail = BookingCard & {
   events: BookingEvent[];
 };
 
+export type BookingReviewSummary = {
+  id: string;
+  overallRating: number;
+  comment: string | null;
+  createdAt: string;
+};
+
 export type HostAvailabilityBlock = {
   id: string;
   spaceName: string;
@@ -238,4 +245,25 @@ export async function getHostAvailabilityBlocks(): Promise<HostAvailabilityBlock
       status: ["available", "blocked", "reserved"].includes(String(row.status)) ? (String(row.status) as HostAvailabilityBlock["status"]) : "blocked",
     };
   });
+}
+
+export async function getUserReviewForBooking(bookingId: string, userId: string): Promise<BookingReviewSummary | null> {
+  const supabase = await createClient();
+  if (!supabase) return null;
+
+  const { data } = await supabase
+    .from("reviews")
+    .select("id,overall_rating,comment,created_at")
+    .eq("booking_id", bookingId)
+    .eq("author_id", userId)
+    .maybeSingle();
+
+  if (!data) return null;
+  const row = data as UnknownRow;
+  return {
+    id: String(row.id),
+    overallRating: asNumber(row.overall_rating),
+    comment: row.comment ? String(row.comment) : null,
+    createdAt: String(row.created_at),
+  };
 }
