@@ -12,10 +12,11 @@ begin
       and column_name in (
         'booking_reference', 'booking_type', 'timezone', 'duration_hours',
         'hourly_rate_snapshot', 'rules_accepted_at', 'hold_expires_at',
-        'idempotency_key', 'pricing_snapshot', 'buffer_minutes_snapshot'
+        'idempotency_key', 'pricing_snapshot', 'buffer_minutes_snapshot',
+        'blocking_interval'
       )
     group by table_name
-    having count(*) = 10
+    having count(*) = 11
   ) then
     raise exception 'SINNER Phase 3 verification failed: bookings columns are incomplete';
   end if;
@@ -43,9 +44,21 @@ begin
     raise exception 'SINNER Phase 3 verification failed: clients can mutate booking_events directly';
   end if;
 
-  if has_table_privilege('authenticated', 'public.bookings', 'UPDATE')
+  if has_table_privilege('authenticated', 'public.bookings', 'INSERT')
+     or has_table_privilege('authenticated', 'public.bookings', 'UPDATE')
      or has_table_privilege('authenticated', 'public.bookings', 'DELETE') then
     raise exception 'SINNER Phase 3 verification failed: clients can mutate bookings directly';
+  end if;
+
+  if has_function_privilege('anon', 'private.create_booking_event(uuid,uuid,public.booking_event_type,public.booking_status,public.booking_status,jsonb)'::regprocedure, 'EXECUTE')
+     or has_function_privilege('authenticated', 'private.create_booking_event(uuid,uuid,public.booking_event_type,public.booking_status,public.booking_status,jsonb)'::regprocedure, 'EXECUTE')
+     or has_function_privilege('anon', 'private.create_notification(uuid,text,text,text,jsonb)'::regprocedure, 'EXECUTE')
+     or has_function_privilege('authenticated', 'private.create_notification(uuid,text,text,text,jsonb)'::regprocedure, 'EXECUTE') then
+    raise exception 'SINNER Phase 3 verification failed: internal booking helpers are executable by clients';
+  end if;
+
+  if private.generate_booking_reference() !~ '^SIN-[A-Z2-9]{6}$' then
+    raise exception 'SINNER Phase 3 verification failed: booking reference generation is broken';
   end if;
 
   if has_column_privilege('anon', 'public.spaces', 'exact_address', 'SELECT')

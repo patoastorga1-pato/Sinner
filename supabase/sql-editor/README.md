@@ -49,6 +49,18 @@ El primer archivo agrega el status `expired` al enum existente. Es intencional
 ejecutarlo separado para que PostgreSQL pueda usar ese valor en funciones,
 constraints y seed posteriores sin errores transaccionales.
 
+Tambien existe `SINNER_PHASE_3_ONE_SQL.sql` para pegar Fase 3 completa de una
+sola vez. Ese archivo incluye un `commit;` intencional despues del enum
+`expired`; no lo quites.
+
+Si un intento de Fase 3 fallo a la mitad, ejecuta:
+
+1. `SINNER_PHASE_3_STEP_1_ENUMS.sql`
+2. `SINNER_PHASE_3_REPAIR_AND_VERIFY.sql`
+
+Ese segundo archivo vuelve a aplicar el motor de reservas y despues verifica que
+`booking_events`, RPCs, constraints, grants y privacidad hayan quedado bien.
+
 Despues de esos pasos, el seed demo de Fase 3 es opcional. Para cargar
 requests pendientes, holds activos, holds expirados y cancelaciones de prueba,
 ejecuta `SINNER_PHASE_3_DEMO_SEED.sql` desde esta carpeta. No lo ejecutes en datos reales de

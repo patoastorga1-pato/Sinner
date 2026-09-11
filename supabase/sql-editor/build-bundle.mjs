@@ -75,9 +75,7 @@ commit;
 await mkdir(sqlEditorDir, { recursive: true });
 for (const bundle of bundles) await buildBundle(bundle);
 
-await writeFile(
-  resolve(sqlEditorDir, "SINNER_PHASE_3_STEP_1_ENUMS.sql"),
-  `-- SINNER Phase 3, Step 1.
+const phase3EnumSql = `-- SINNER Phase 3, Step 1.
 -- Run this first in Supabase SQL Editor, then run SINNER_PHASE_3_BOOKING_ENGINE.sql.
 
 do $$
@@ -87,13 +85,24 @@ exception
   when duplicate_object then null;
 end;
 $$;
-`,
+`;
+
+const phase3EngineSql = await readFile(
+  resolve(projectRoot, "supabase/migrations/20260907230000_booking_engine_phase_3.sql"),
+  "utf8",
+);
+
+const phase3VerifySql = await readFile(resolve(sqlEditorDir, "verify_phase_3.sql"), "utf8");
+
+await writeFile(
+  resolve(sqlEditorDir, "SINNER_PHASE_3_STEP_1_ENUMS.sql"),
+  phase3EnumSql,
   "utf8",
 );
 
 await writeFile(
   resolve(sqlEditorDir, "SINNER_PHASE_3_BOOKING_ENGINE.sql"),
-  await readFile(resolve(projectRoot, "supabase/migrations/20260907230000_booking_engine_phase_3.sql"), "utf8"),
+  phase3EngineSql,
   "utf8",
 );
 
@@ -102,3 +111,32 @@ await writeFile(
   await readFile(resolve(projectRoot, "supabase/phase3_seed.sql"), "utf8"),
   "utf8",
 );
+
+await writeFile(
+  resolve(sqlEditorDir, "SINNER_PHASE_3_REPAIR_AND_VERIFY.sql"),
+  [
+    `-- SINNER Phase 3 repair/retry SQL.
+-- Use this after SINNER_PHASE_3_STEP_1_ENUMS.sql has run successfully.
+-- Safe to rerun after a partial failed Phase 3 attempt: it uses IF NOT EXISTS,
+-- CREATE OR REPLACE, DROP IF EXISTS, and idempotent grants/policies where possible.`,
+    phase3EngineSql.trim(),
+    `-- Verification.`,
+    phase3VerifySql.trim(),
+  ].join("\n\n"),
+  "utf8",
+);
+
+const phase3OneSql = [
+  `-- SINNER Phase 3 one-shot SQL.
+-- Paste the full file into Supabase SQL Editor.
+-- The COMMIT after Step 1 is intentional: PostgreSQL must commit a new enum value
+-- before later statements can use that value in functions, constraints, or seed data.`,
+  phase3EnumSql.trim(),
+  "commit;",
+  `-- Step 2: booking engine schema, RLS, policies, triggers, and RPCs.`,
+  phase3EngineSql.trim(),
+  `-- Step 3: verification.`,
+  phase3VerifySql.trim(),
+].join("\n\n");
+
+await writeFile(resolve(sqlEditorDir, "SINNER_PHASE_3_ONE_SQL.sql"), phase3OneSql, "utf8");

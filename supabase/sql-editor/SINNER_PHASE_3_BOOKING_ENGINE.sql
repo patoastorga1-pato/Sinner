@@ -82,11 +82,25 @@ set search_path = ''
 as $$
 declare
   alphabet constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  crypto_schema text;
   bytes bytea;
   result text;
 begin
+  select n.nspname
+  into crypto_schema
+  from pg_catalog.pg_proc p
+  join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+  where p.proname = 'gen_random_bytes'
+    and p.pronargs = 1
+  order by case n.nspname when 'extensions' then 0 when 'public' then 1 else 2 end
+  limit 1;
+
+  if crypto_schema is null then
+    raise exception 'pgcrypto_unavailable';
+  end if;
+
   loop
-    bytes := gen_random_bytes(6);
+    execute format('select %I.gen_random_bytes($1)', crypto_schema) into bytes using 6;
     result := 'SIN-';
     for i in 0..5 loop
       result := result || substr(alphabet, (get_byte(bytes, i) % length(alphabet)) + 1, 1);
@@ -110,23 +124,65 @@ alter table public.bookings
   add column if not exists cancelled_at timestamptz,
   add column if not exists idempotency_key text,
   add column if not exists pricing_snapshot jsonb not null default '{}'::jsonb,
-  add column if not exists buffer_minutes_snapshot integer not null default 0 check (buffer_minutes_snapshot >= 0 and buffer_minutes_snapshot <= 1440);
+  add column if not exists buffer_minutes_snapshot integer not null default 0 check (buffer_minutes_snapshot >= 0 and buffer_minutes_snapshot <= 1440),
+  add column if not exists blocking_interval tstzrange;
 
 update public.bookings b
 set
-  booking_reference = coalesce(booking_reference, 'SIN-' || upper(right(replace(b.id::text, '-', ''), 6))),
-  duration_hours = greatest(1, ceil(extract(epoch from (end_datetime - start_datetime)) / 3600)::integer),
+  booking_reference = 'SIN-' || upper(right(replace(b.id::text, '-', ''), 6))
+where b.booking_reference is null;
+
+update public.bookings b
+set
+  duration_hours = greatest(1, ceil(extract(epoch from (b.end_datetime - b.start_datetime)) / 3600)::integer),
   hourly_rate_snapshot = case
-    when hourly_rate_snapshot > 0 then hourly_rate_snapshot
-    when extract(epoch from (end_datetime - start_datetime)) > 0 then round((base_amount / greatest(extract(epoch from (end_datetime - start_datetime)) / 3600, 1))::numeric, 2)
-    else base_amount
+    when b.hourly_rate_snapshot > 0 then b.hourly_rate_snapshot
+    when extract(epoch from (b.end_datetime - b.start_datetime)) > 0 then round((b.base_amount / greatest(extract(epoch from (b.end_datetime - b.start_datetime)) / 3600, 1))::numeric, 2)
+    else b.base_amount
   end,
+  rules_accepted_at = coalesce(b.rules_accepted_at, b.created_at),
+  pricing_snapshot = case when b.pricing_snapshot = '{}'::jsonb then jsonb_build_object('source', 'phase_3_backfill') else b.pricing_snapshot end;
+
+update public.bookings b
+set
   timezone = coalesce(nullif(b.timezone, ''), s.timezone, 'America/Mexico_City'),
-  buffer_minutes_snapshot = coalesce(s.buffer_minutes, 0),
-  rules_accepted_at = coalesce(rules_accepted_at, created_at),
-  pricing_snapshot = case when pricing_snapshot = '{}'::jsonb then jsonb_build_object('source', 'phase_3_backfill') else pricing_snapshot end
+  buffer_minutes_snapshot = coalesce(s.buffer_minutes, 0)
 from public.spaces s
 where s.id = b.space_id;
+
+create or replace function private.set_booking_blocking_interval()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.blocking_interval := tstzrange(
+    new.start_datetime,
+    new.end_datetime + (new.buffer_minutes_snapshot * interval '1 minute'),
+    '[)'
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists bookings_set_blocking_interval on public.bookings;
+create trigger bookings_set_blocking_interval
+before insert or update of start_datetime, end_datetime, buffer_minutes_snapshot
+on public.bookings
+for each row execute function private.set_booking_blocking_interval();
+
+update public.bookings b
+set blocking_interval = tstzrange(
+  b.start_datetime,
+  b.end_datetime + (b.buffer_minutes_snapshot * interval '1 minute'),
+  '[)'
+)
+where b.blocking_interval is null
+   or b.blocking_interval <> tstzrange(
+    b.start_datetime,
+    b.end_datetime + (b.buffer_minutes_snapshot * interval '1 minute'),
+    '[)'
+  );
 
 alter table public.bookings
   alter column booking_reference set not null,
@@ -158,10 +214,11 @@ $$;
 
 do $$
 begin
+  alter table public.bookings drop constraint if exists bookings_no_active_overlap;
   alter table public.bookings add constraint bookings_no_active_overlap
     exclude using gist (
       space_id with =,
-      tstzrange(start_datetime, end_datetime + (buffer_minutes_snapshot * interval '1 minute'), '[)') with &&
+      blocking_interval with &&
     )
     where (status in ('payment_pending', 'confirmed'));
 exception
@@ -466,6 +523,17 @@ begin
 end;
 $$;
 
+revoke all on function private.generate_booking_reference() from PUBLIC, anon, authenticated;
+revoke all on function private.set_booking_blocking_interval() from PUBLIC, anon, authenticated;
+revoke all on function private.setting_numeric(text, numeric) from PUBLIC, anon, authenticated;
+revoke all on function private.setting_integer(text, integer) from PUBLIC, anon, authenticated;
+revoke all on function private.active_booking_blocks(uuid, timestamptz, timestamptz, integer) from PUBLIC, anon, authenticated;
+revoke all on function private.manual_block_conflicts(uuid, timestamptz, timestamptz, text, integer) from PUBLIC, anon, authenticated;
+revoke all on function private.create_booking_event(uuid, uuid, public.booking_event_type, public.booking_status, public.booking_status, jsonb) from PUBLIC, anon, authenticated;
+revoke all on function private.create_notification(uuid, text, text, text, jsonb) from PUBLIC, anon, authenticated;
+revoke all on function private.validate_booking_transition(public.booking_status, public.booking_status) from PUBLIC, anon, authenticated;
+revoke all on function private.calculate_booking_pricing(public.booking_type, integer, numeric, numeric, numeric, numeric) from PUBLIC, anon, authenticated;
+
 create or replace function public.create_booking_request(
   p_space_id uuid,
   p_booking_type text,
@@ -651,7 +719,6 @@ declare
   current_user_id uuid := (select auth.uid());
   booking_row public.bookings%rowtype;
   space_row public.spaces%rowtype;
-  previous_status public.booking_status;
 begin
   if current_user_id is null then raise exception 'auth_required'; end if;
   select * into booking_row from public.bookings where id = p_booking_id for update;
@@ -688,6 +755,7 @@ declare
   current_user_id uuid := (select auth.uid());
   booking_row public.bookings%rowtype;
   space_row public.spaces%rowtype;
+  previous_status public.booking_status;
 begin
   if current_user_id is null then raise exception 'auth_required'; end if;
   select * into booking_row from public.bookings where id = p_booking_id for update;
