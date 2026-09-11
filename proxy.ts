@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-const authenticatedPrefixes = ["/profile", "/settings", "/favorites", "/bookings", "/messages", "/notifications", "/checkout"];
+const authenticatedPrefixes = ["/profile", "/settings", "/favorites", "/bookings", "/messages", "/notifications", "/checkout", "/support"];
 const hostPrefixes = ["/host/dashboard", "/host/listings", "/host/bookings", "/host/calendar", "/host/messages", "/host/earnings"];
 
 function matchesPrefix(pathname: string, prefixes: string[]) {
