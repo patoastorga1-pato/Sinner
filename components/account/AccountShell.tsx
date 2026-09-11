@@ -8,6 +8,7 @@ const accountLinks = [
   ["Messages", "/messages"],
   ["Favorites", "/favorites"],
   ["Notifications", "/notifications"],
+  ["Support", "/support"],
   ["Settings", "/settings"],
 ] as const;
 
@@ -28,4 +29,3 @@ export function AccountShell({ eyebrow = "Your account", title, copy, children }
     </main>
   );
 }
-

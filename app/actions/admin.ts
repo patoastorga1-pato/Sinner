@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { safeRedirectPath, withMessage } from "@/lib/auth/redirect";
 import { requireRole } from "@/lib/auth/server";
 import { createClient } from "@/lib/supabase/server";
+import type { ReportStatus, SpaceStatus, SupportTicketStatus } from "@/lib/types/database";
 
 function value(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
@@ -55,4 +56,67 @@ export async function rejectHostRequestAction(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/host/onboarding");
   redirect(withMessage(returnPath, "success", "Host request rejected."));
+}
+
+function spaceStatus(value: string): SpaceStatus {
+  return ["draft", "pending_review", "approved", "rejected", "suspended"].includes(value) ? (value as SpaceStatus) : "pending_review";
+}
+
+function reportStatus(value: string): ReportStatus {
+  return ["open", "reviewing", "resolved", "dismissed"].includes(value) ? (value as ReportStatus) : "reviewing";
+}
+
+function supportStatus(value: string): SupportTicketStatus {
+  return ["open", "in_progress", "resolved", "closed"].includes(value) ? (value as SupportTicketStatus) : "in_progress";
+}
+
+export async function updateSpaceStatusAction(formData: FormData) {
+  const returnPath = safeRedirectPath(value(formData, "return_path"), "/admin/listings");
+  const supabase = await requireAdminSupabase(returnPath);
+
+  const { error } = await supabase.rpc("admin_update_space_status", {
+    p_space_id: value(formData, "space_id"),
+    p_status: spaceStatus(value(formData, "status")),
+  });
+
+  if (error) redirect(withMessage(returnPath, "error", error.message));
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/listings");
+  revalidatePath("/spaces");
+  redirect(withMessage(returnPath, "success", "Listing status updated."));
+}
+
+export async function updateReportStatusAction(formData: FormData) {
+  const returnPath = safeRedirectPath(value(formData, "return_path"), "/admin/reports");
+  const supabase = await requireAdminSupabase(returnPath);
+
+  const { error } = await supabase
+    .from("reports")
+    .update({ status: reportStatus(value(formData, "status")) })
+    .eq("id", value(formData, "report_id"));
+
+  if (error) redirect(withMessage(returnPath, "error", error.message));
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/reports");
+  redirect(withMessage(returnPath, "success", "Report updated."));
+}
+
+export async function updateSupportTicketAction(formData: FormData) {
+  const returnPath = safeRedirectPath(value(formData, "return_path"), "/admin/support");
+  const supabase = await requireAdminSupabase(returnPath);
+
+  const { error } = await supabase.rpc("update_support_ticket_admin", {
+    p_ticket_id: value(formData, "ticket_id"),
+    p_status: supportStatus(value(formData, "status")),
+    p_admin_response: value(formData, "admin_response") || null,
+  });
+
+  if (error) redirect(withMessage(returnPath, "error", error.message));
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/support");
+  revalidatePath("/support");
+  redirect(withMessage(returnPath, "success", "Support ticket updated."));
 }

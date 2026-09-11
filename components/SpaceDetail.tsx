@@ -1,5 +1,6 @@
 import Image from "next/image";
-import { BadgeCheck, Check, CircleOff, Clock3, MapPin, Star, UserRound, Users, X } from "lucide-react";
+import { BadgeCheck, Check, CircleOff, Clock3, MapPin, MessageCircle, Star, UserRound, Users, X } from "lucide-react";
+import { startSpaceConversationAction } from "@/app/actions/messages";
 import { AmenityList } from "@/components/space/AmenityList";
 import { BookingWidget } from "@/components/space/BookingWidget";
 import { SpaceGallery } from "@/components/space/SpaceGallery";
@@ -82,7 +83,17 @@ export function SpaceDetail({
             </section>
           </div>
 
-          <div><BookingWidget space={space} authenticated={authenticated} initialSelection={initialSelection} /><div className="mt-4 flex items-center gap-3 px-2 text-xs leading-5 text-sinner-mist"><Clock3 size={16} className="shrink-0 text-sinner-goldSoft" />Hourly availability includes the host&apos;s {space.bufferMinutes}-minute turnover buffer.</div></div>
+          <div>
+            <BookingWidget space={space} authenticated={authenticated} initialSelection={initialSelection} />
+            <div className="mt-4 flex items-center gap-3 px-2 text-xs leading-5 text-sinner-mist"><Clock3 size={16} className="shrink-0 text-sinner-goldSoft" />Hourly availability includes the host&apos;s {space.bufferMinutes}-minute turnover buffer.</div>
+            <form action={startSpaceConversationAction} className="mt-5 rounded-xl border hairline bg-white/[0.025] p-5">
+              <input type="hidden" name="space_id" value={space.id} />
+              <input type="hidden" name="return_path" value={`/spaces/${space.slug}`} />
+              <div className="flex items-center gap-3"><MessageCircle size={18} className="text-sinner-goldSoft" /><h2 className="font-semibold text-sinner-ivory">Message host</h2></div>
+              <textarea name="body" rows={4} required placeholder="Ask a private question before booking..." className="mt-4 w-full rounded-lg border hairline bg-black/35 px-4 py-3 text-sm text-white outline-none placeholder:text-sinner-mist/50 focus:border-sinner-gold/45" />
+              <button type="submit" className="mt-3 min-h-11 w-full rounded-lg border border-sinner-gold/25 px-4 text-sm font-semibold text-sinner-goldSoft transition hover:bg-sinner-gold/10">Send message</button>
+            </form>
+          </div>
         </div>
 
         {related.length ? <section className="mt-20 border-t hairline pt-14"><p className="text-xs font-semibold uppercase text-sinner-goldSoft">More spaces nearby</p><h2 className="mt-3 font-display text-4xl text-sinner-ivory">You may also like</h2><div className="mt-7 grid gap-6 md:grid-cols-3">{related.map((candidate) => <SpaceCard key={candidate.id} space={candidate} authenticated={authenticated} />)}</div></section> : null}

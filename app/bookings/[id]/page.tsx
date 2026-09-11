@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, Clock, ReceiptText, ShieldCheck, UserRound, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, Clock, ReceiptText, ShieldCheck, Star, UserRound, Users } from "lucide-react";
+import { createReviewAction } from "@/app/actions/reviews";
 import { notFound } from "next/navigation";
 import { AccountShell } from "@/components/account/AccountShell";
 import { BookingStatusBadge } from "@/components/booking/BookingStatusBadge";
@@ -9,7 +10,7 @@ import { StatusMessage } from "@/components/ui/StatusMessage";
 import { requireUser } from "@/lib/auth/server";
 import { canGuestCancel } from "@/lib/bookings/constants";
 import { formatBookingDate, formatBookingRange, formatBookingTime, minutesUntil } from "@/lib/bookings/time";
-import { getBookingDetail } from "@/lib/data-access/bookings";
+import { getBookingDetail, getUserReviewForBooking } from "@/lib/data-access/bookings";
 import { formatMoney } from "@/lib/marketplace/pricing";
 import type { RawSearchParams } from "@/lib/types/marketplace";
 
@@ -21,8 +22,8 @@ export default async function BookingDetailPage({
   searchParams: Promise<RawSearchParams & { error?: string; success?: string }>;
 }) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
-  await requireUser(`/bookings/${id}`);
-  const booking = await getBookingDetail(id);
+  const auth = await requireUser(`/bookings/${id}`);
+  const [booking, userReview] = await Promise.all([getBookingDetail(id), getUserReviewForBooking(id, auth.user.id)]);
   if (!booking) notFound();
   const holdMinutes = minutesUntil(booking.holdExpiresAt);
 
@@ -61,6 +62,47 @@ export default async function BookingDetailPage({
               {booking.events.length ? booking.events.map((event) => <div key={event.id} className="py-4 text-sm"><p className="font-medium text-sinner-ivory">{event.eventType.replace(/_/g, " ")}</p><p className="mt-1 text-sinner-mist">{event.fromStatus ? `${event.fromStatus} -> ${event.toStatus}` : event.toStatus ?? "Recorded"} · {formatBookingRange(event.createdAt, event.createdAt, booking.timezone)}</p></div>) : <p className="py-4 text-sm text-sinner-mist">No audit events are visible yet.</p>}
             </div>
           </section>
+
+          {booking.status === "completed" ? (
+            <section className="mt-10 border-t hairline pt-8">
+              <div className="flex items-center gap-3"><Star size={19} className="text-sinner-goldSoft" /><h2 className="font-display text-4xl text-sinner-ivory">Review this space</h2></div>
+              {userReview ? (
+                <div className="mt-5 rounded-xl border hairline bg-white/[0.025] p-5">
+                  <p className="font-medium text-sinner-ivory">{userReview.overallRating}/5 overall</p>
+                  {userReview.comment ? <p className="mt-3 text-sm leading-6 text-sinner-mist">{userReview.comment}</p> : null}
+                  <p className="mt-4 text-xs text-sinner-mist/70">Published {new Date(userReview.createdAt).toLocaleDateString()}</p>
+                </div>
+              ) : (
+                <form action={createReviewAction} className="mt-5 grid gap-5 rounded-xl border hairline bg-white/[0.025] p-5">
+                  <input type="hidden" name="booking_id" value={booking.id} />
+                  <input type="hidden" name="return_path" value={`/bookings/${booking.id}`} />
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    {[
+                      ["overall_rating", "Overall"],
+                      ["cleanliness_rating", "Cleanliness"],
+                      ["privacy_rating", "Privacy"],
+                      ["accuracy_rating", "Accuracy"],
+                      ["host_rating", "Host"],
+                      ["discretion_rating", "Discretion"],
+                    ].map(([name, label]) => (
+                      <label key={name} className="grid gap-2 text-sm text-sinner-ivory">
+                        <span>{label}</span>
+                        <select name={name} required={name === "overall_rating"} defaultValue="" className="h-11 rounded-lg border hairline bg-black/35 px-3 text-white outline-none">
+                          <option value="" disabled>Rating</option>
+                          {[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating}</option>)}
+                        </select>
+                      </label>
+                    ))}
+                  </div>
+                  <label className="grid gap-2 text-sm text-sinner-ivory">
+                    <span>Comment</span>
+                    <textarea name="comment" rows={4} maxLength={3000} className="rounded-lg border hairline bg-black/35 px-4 py-3 text-white outline-none" />
+                  </label>
+                  <button type="submit" className="min-h-11 w-fit rounded-lg bg-sinner-gold px-5 text-sm font-semibold text-black transition hover:bg-sinner-goldSoft">Publish review</button>
+                </form>
+              )}
+            </section>
+          ) : null}
         </div>
 
         <aside className="premium-panel h-fit p-6 lg:sticky lg:top-24">
