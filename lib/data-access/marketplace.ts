@@ -253,6 +253,48 @@ export async function getSpaces() {
   return getFeaturedSpaces(3);
 }
 
+export type MarketplaceAmenityFilter = {
+  slug: string;
+  label: string;
+  category: string;
+};
+
+function getDevelopmentAmenityFilters(): MarketplaceAmenityFilter[] {
+  const bySlug = new Map<string, MarketplaceAmenityFilter>();
+  developmentSpaces.forEach((space) => {
+    space.amenities.forEach((amenity) => {
+      if (!bySlug.has(amenity.slug)) {
+        bySlug.set(amenity.slug, {
+          slug: amenity.slug,
+          label: amenity.name,
+          category: amenity.category,
+        });
+      }
+    });
+  });
+  return Array.from(bySlug.values()).sort((a, b) => a.category.localeCompare(b.category) || a.label.localeCompare(b.label));
+}
+
+export async function getMarketplaceAmenityFilters(): Promise<MarketplaceAmenityFilter[]> {
+  if (shouldUseDevelopmentFixtures()) return getDevelopmentAmenityFilters();
+  const supabase = await createClient();
+  if (!supabase) return getDevelopmentAmenityFilters();
+
+  const { data, error } = await supabase
+    .from("amenities")
+    .select("slug,name,category")
+    .order("category", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (error || !data?.length) return getDevelopmentAmenityFilters();
+
+  return asRows(data).map((row) => ({
+    slug: String(row.slug),
+    label: String(row.name),
+    category: String(row.category ?? "general"),
+  }));
+}
+
 function mapNestedAmenity(row: UnknownRow): SpaceAmenity | null {
   const value = row.amenities;
   const amenity = Array.isArray(value) ? (value[0] as UnknownRow | undefined) : (value as UnknownRow | undefined);
