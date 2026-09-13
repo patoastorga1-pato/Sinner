@@ -4,14 +4,17 @@ import { Header } from "@/components/Header";
 
 export const adminLinks = [
   ["Dashboard", "/admin"],
-  ["Users", "/admin/users"],
+  ["Profiles", "/admin/profiles"],
   ["Hosts", "/admin/hosts"],
-  ["Listings", "/admin/listings"],
+  ["Publications", "/admin/listings"],
   ["Bookings", "/admin/bookings"],
   ["Reports", "/admin/reports"],
   ["Support", "/admin/support"],
   ["Reviews", "/admin/reviews"],
   ["Payments", "/admin/payments"],
+  ["Payouts", "/admin/payouts"],
+  ["Messages", "/admin/messages"],
+  ["Settings", "/admin/settings"],
 ] as const;
 
 export function AdminShell({ title, copy, children }: { title: string; copy: string; children: React.ReactNode }) {
