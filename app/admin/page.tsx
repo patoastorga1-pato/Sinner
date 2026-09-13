@@ -1,9 +1,11 @@
-import { CheckCircle2, Clock3, ShieldAlert, UserRound, XCircle } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, Banknote, CheckCircle2, Clock3, FileText, ShieldAlert, UserRound, Users, XCircle } from "lucide-react";
 import { approveHostRequestAction, rejectHostRequestAction } from "@/app/actions/admin";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { requireRole } from "@/lib/auth/server";
 import { getAdminDashboard, getAdminHostApplications, getHostApplicationCounts, type AdminHostApplication } from "@/lib/data-access/admin";
+import { formatMoney } from "@/lib/marketplace/pricing";
 import type { HostApplicationStatus } from "@/lib/types/database";
 
 const statusStyles: Record<HostApplicationStatus, string> = {
@@ -22,6 +24,18 @@ function StatusBadge({ status }: { status: HostApplicationStatus }) {
   return <span className={`rounded-full border px-3 py-1 text-xs font-semibold capitalize ${statusStyles[status]}`}>{status}</span>;
 }
 
+function MetricCard({ label, value, detail, href }: { label: string; value: string | number; detail: string; href?: string }) {
+  const body = (
+    <article className="h-full rounded-xl border hairline bg-white/[0.025] p-5 transition hover:border-sinner-gold/25 hover:bg-white/[0.04]">
+      <p className="text-sm text-sinner-mist">{label}</p>
+      <p className="mt-4 font-display text-4xl text-sinner-ivory">{value}</p>
+      <p className="mt-2 text-xs leading-5 text-sinner-mist/70">{detail}</p>
+    </article>
+  );
+
+  return href ? <Link href={href}>{body}</Link> : body;
+}
+
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
   await requireRole("admin", "/admin");
   const [params, applications, counts, dashboard] = await Promise.all([
@@ -31,24 +45,64 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     getAdminDashboard(),
   ]);
   const pendingApplications = applications.filter((application) => application.status === "pending");
+  const activeBookings = dashboard.bookings.pending + dashboard.bookings.payment_pending + dashboard.bookings.confirmed;
 
   return (
-    <AdminShell title="Security Dashboard" copy="Moderation, host access and platform health overview.">
+    <AdminShell title="Command Center" copy="A private operating room for SINNER moderation, users, listings, bookings, support and payment readiness.">
       <StatusMessage error={params.error} success={params.success} />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          ["Users", dashboard.users],
-          ["Hosts", dashboard.hosts],
-          ["Approved listings", dashboard.spaces.approved],
-          ["Open support", dashboard.supportOpen],
-        ].map(([label, value]) => (
-          <article key={label} className="rounded-xl border hairline bg-white/[0.025] p-5">
-            <p className="text-sm text-sinner-mist">{label}</p>
-            <p className="mt-4 font-display text-4xl text-sinner-ivory">{value}</p>
-          </article>
-        ))}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Profiles" value={dashboard.users} detail="Registered adult profiles visible to admin." href="/admin/profiles" />
+        <MetricCard label="Hosts" value={dashboard.hosts} detail="Accounts with host permissions." href="/admin/hosts" />
+        <MetricCard label="Approved spaces" value={dashboard.spaces.approved} detail={`${dashboard.spaces.pending_review} waiting for review.`} href="/admin/listings" />
+        <MetricCard label="Active bookings" value={activeBookings} detail="Pending, payment-hold and confirmed reservations." href="/admin/bookings" />
       </div>
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Open reports" value={dashboard.reportsOpen} detail="Reports that need moderation attention." href="/admin/reports" />
+        <MetricCard label="Open support" value={dashboard.supportOpen} detail="Support tickets open or in progress." href="/admin/support" />
+        <MetricCard label="Pending payments" value={dashboard.paymentsPending} detail="Payment ledgers awaiting provider confirmation." href="/admin/payments" />
+        <MetricCard label="Pending payouts" value={dashboard.payoutsPending} detail="Host payout records not yet available or paid." href="/admin/payouts" />
+      </div>
+
+      <section className="mt-8 grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="premium-panel p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase text-sinner-goldSoft">Financial ledger</p>
+              <h2 className="mt-2 font-display text-3xl text-sinner-ivory">Payment readiness</h2>
+            </div>
+            <Banknote className="text-sinner-goldSoft" size={24} />
+          </div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <MetricCard label="Gross volume" value={`${formatMoney(dashboard.paymentGross, "MXN")} MXN`} detail="Total gross payment records." />
+            <MetricCard label="Platform fees" value={`${formatMoney(dashboard.platformFees, "MXN")} MXN`} detail="Commission snapshot." />
+            <MetricCard label="Host net" value={`${formatMoney(dashboard.hostNet, "MXN")} MXN`} detail="Projected host earnings." />
+          </div>
+        </div>
+
+        <aside className="premium-panel p-6">
+          <p className="text-xs font-semibold uppercase text-sinner-goldSoft">Signals</p>
+          <div className="mt-5 grid gap-3">
+            {[
+              { label: "Profiles", value: dashboard.users, Icon: Users },
+              { label: "Publications", value: dashboard.spaces.draft + dashboard.spaces.pending_review + dashboard.spaces.approved + dashboard.spaces.rejected + dashboard.spaces.suspended, Icon: FileText },
+              { label: "Reports", value: dashboard.reportsOpen, Icon: AlertTriangle },
+              { label: "Support", value: dashboard.supportOpen, Icon: ShieldAlert },
+            ].map(({ label, value, Icon }) => {
+              return (
+                <div key={label} className="flex items-center justify-between gap-3 rounded-lg border hairline bg-black/20 p-4">
+                  <div>
+                    <p className="text-sm text-sinner-mist">{label}</p>
+                    <p className="mt-1 font-display text-2xl text-sinner-ivory">{String(value)}</p>
+                  </div>
+                  <Icon size={18} className="text-sinner-goldSoft" />
+                </div>
+              );
+            })}
+          </div>
+        </aside>
+      </section>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {([
