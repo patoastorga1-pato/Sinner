@@ -28,6 +28,7 @@ export function HeaderClient({ auth }: { auth: AuthState }) {
   const [accountOpen, setAccountOpen] = useState(false);
   const pathname = usePathname();
   const isHost = auth.roles.includes("host");
+  const isAdmin = auth.roles.includes("admin");
   const loginRedirect = `/login?redirect=${encodeURIComponent(pathname)}`;
   const hostHref = auth.user ? (isHost ? "/host/dashboard" : "/host/onboarding") : "/login?redirect=/host/onboarding";
 
@@ -86,6 +87,7 @@ export function HeaderClient({ auth }: { auth: AuthState }) {
                 <p className="truncate border-b hairline px-3 py-2 text-xs text-sinner-mist">{auth.profile?.display_name || auth.user.email}</p>
                 {memberItems.map((item) => <Link key={item.href} href={item.href} onClick={() => setAccountOpen(false)} className="block rounded-md px-3 py-2 text-sm text-sinner-mist hover:bg-white/[0.05] hover:text-white">{item.label}</Link>)}
                 <Link href={hostHref} onClick={() => setAccountOpen(false)} className="block rounded-md px-3 py-2 text-sm text-sinner-goldSoft hover:bg-white/[0.05]">{isHost ? "Host Dashboard" : "Become a Host"}</Link>
+                {isAdmin ? <Link href="/admin" onClick={() => setAccountOpen(false)} className="block rounded-md px-3 py-2 text-sm font-semibold text-sinner-goldSoft hover:bg-white/[0.05]">Admin Dashboard</Link> : null}
                 <form action={logoutAction} className="mt-1 border-t hairline pt-1"><button type="submit" className="w-full rounded-md px-3 py-2 text-left text-sm text-sinner-mist hover:bg-white/[0.05] hover:text-white">Log out</button></form>
               </>
             ) : (
@@ -109,10 +111,11 @@ export function HeaderClient({ auth }: { auth: AuthState }) {
                 <Link href="/signup" onClick={() => setMenuOpen(false)} className="rounded-lg px-4 py-3 text-sm text-sinner-goldSoft">Sign up</Link>
               </>
             )}
+            {auth.user ? <Link href={hostHref} onClick={() => setMenuOpen(false)} className="rounded-lg px-4 py-3 text-sm text-sinner-goldSoft hover:bg-white/[0.04]">{isHost ? "Host Dashboard" : "Become a Host"}</Link> : null}
+            {auth.user && isAdmin ? <Link href="/admin" onClick={() => setMenuOpen(false)} className="rounded-lg px-4 py-3 text-sm font-semibold text-sinner-goldSoft hover:bg-white/[0.04]">Admin Dashboard</Link> : null}
           </div>
         </nav>
       ) : null}
     </header>
   );
 }
-
