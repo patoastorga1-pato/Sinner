@@ -8,13 +8,13 @@ import { Header } from "@/components/Header";
 import { SearchBar } from "@/components/SearchBar";
 import { SectionTitle } from "@/components/SectionTitle";
 import { SpaceCard } from "@/components/SpaceCard";
-import { getFavoriteSpaceIds, searchSpaces } from "@/lib/data-access/marketplace";
+import { getFavoriteSpaceIds, getMarketplaceAmenityFilters, searchSpaces } from "@/lib/data-access/marketplace";
 import { hasActiveFilters, parseSpaceSearchParams, searchQueryToParams } from "@/lib/marketplace/search";
 import type { RawSearchParams } from "@/lib/types/marketplace";
 
 export default async function SpacesPage({ searchParams }: { searchParams: Promise<RawSearchParams> }) {
   const query = parseSpaceSearchParams(await searchParams);
-  const [result, favorites] = await Promise.all([searchSpaces(query), getFavoriteSpaceIds()]);
+  const [result, favorites, amenityFilters] = await Promise.all([searchSpaces(query), getFavoriteSpaceIds(), getMarketplaceAmenityFilters()]);
   const queryString = searchQueryToParams(query).toString();
   const reservationParams = new URLSearchParams();
   if (query.date) reservationParams.set("date", query.date);
@@ -39,7 +39,7 @@ export default async function SpacesPage({ searchParams }: { searchParams: Promi
         </div>
 
         <div className="mt-7 grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)]">
-          <FiltersPanel query={query} />
+          <FiltersPanel query={query} amenities={amenityFilters} />
           <div className="min-w-0">
             {result.spaces.length ? (
               <>

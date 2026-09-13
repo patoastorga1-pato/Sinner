@@ -3,16 +3,8 @@
 import Link from "next/link";
 import { SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { MarketplaceAmenityFilter } from "@/lib/data-access/marketplace";
 import { SPACE_TYPES, type SpaceSearchQuery } from "@/lib/types/marketplace";
-
-const amenityFilters = [
-  { slug: "jacuzzi", label: "Jacuzzi" },
-  { slug: "pool", label: "Pool" },
-  { slug: "private-entrance", label: "Private entrance" },
-  { slug: "self-check-in", label: "Self check-in" },
-  { slug: "soundproofing", label: "Soundproofing" },
-  { slug: "private-parking", label: "Parking" },
-];
 
 const allowedUseFilters = [
   { name: "photography", slug: "photography", label: "Photography" },
@@ -31,7 +23,7 @@ function CheckField({ name, value = "true", label, checked }: { name: string; va
   );
 }
 
-function FilterForm({ query, onApply, idPrefix }: { query: SpaceSearchQuery; onApply?: () => void; idPrefix: string }) {
+function FilterForm({ query, amenities, onApply, idPrefix }: { query: SpaceSearchQuery; amenities: MarketplaceAmenityFilter[]; onApply?: () => void; idPrefix: string }) {
   return (
     <form action="/spaces" method="get" onSubmit={onApply} className="space-y-7">
       {query.location ? <input type="hidden" name="location" value={query.location} /> : null}
@@ -59,7 +51,13 @@ function FilterForm({ query, onApply, idPrefix }: { query: SpaceSearchQuery; onA
       </fieldset>
 
       <fieldset><legend className="text-xs font-semibold uppercase text-sinner-goldSoft">Booking</legend><div className="mt-2"><CheckField name="instantBooking" label="Instant booking" checked={query.instantBooking} /></div></fieldset>
-      <fieldset><legend className="text-xs font-semibold uppercase text-sinner-goldSoft">Features</legend><div className="mt-2">{amenityFilters.map((amenity) => <CheckField key={amenity.slug} name="amenities" value={amenity.slug} label={amenity.label} checked={query.amenities.includes(amenity.slug)} />)}</div></fieldset>
+      <fieldset>
+        <legend className="text-xs font-semibold uppercase text-sinner-goldSoft">Features</legend>
+        <div className="mt-2">
+          {amenities.map((amenity) => <CheckField key={amenity.slug} name="amenities" value={amenity.slug} label={amenity.label} checked={query.amenities.includes(amenity.slug)} />)}
+          {!amenities.length ? <p className="py-2 text-sm text-sinner-mist">No amenity filters are available yet.</p> : null}
+        </div>
+      </fieldset>
       <fieldset><legend className="text-xs font-semibold uppercase text-sinner-goldSoft">Use cases</legend><div className="mt-2"><CheckField name="creatorFriendly" label="Creator Friendly" checked={query.creatorFriendly} /><CheckField name="groupFriendly" label="Group Friendly" checked={query.groupFriendly} /><CheckField name="eventsAllowed" label="Events Allowed" checked={query.eventsAllowed} /></div></fieldset>
       <fieldset><legend className="text-xs font-semibold uppercase text-sinner-goldSoft">Allowed uses</legend><div className="mt-2">{allowedUseFilters.map((use) => <CheckField key={use.slug} name={use.name} label={use.label} checked={query.allowedUses.includes(use.slug)} />)}</div></fieldset>
 
@@ -71,7 +69,7 @@ function FilterForm({ query, onApply, idPrefix }: { query: SpaceSearchQuery; onA
   );
 }
 
-export function FiltersPanel({ query }: { query: SpaceSearchQuery }) {
+export function FiltersPanel({ query, amenities }: { query: SpaceSearchQuery; amenities: MarketplaceAmenityFilter[] }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -86,12 +84,12 @@ export function FiltersPanel({ query }: { query: SpaceSearchQuery }) {
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-sinner-gold/25 text-sm text-sinner-goldSoft lg:hidden" aria-haspopup="dialog"><SlidersHorizontal size={17} />Filters</button>
-      <aside className="hidden border-r hairline pr-6 lg:block" aria-label="Space filters"><FilterForm query={query} idPrefix="desktop" /></aside>
+      <aside className="hidden border-r hairline pr-6 lg:block" aria-label="Space filters"><FilterForm query={query} amenities={amenities} idPrefix="desktop" /></aside>
       {open ? (
         <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm lg:hidden" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
           <section role="dialog" aria-modal="true" aria-labelledby="mobile-filters-title" className="ml-auto h-full w-[min(92vw,400px)] overflow-y-auto border-l hairline bg-sinner-black px-5 pb-8 pt-5 shadow-2xl">
             <div className="mb-7 flex items-center justify-between"><h2 id="mobile-filters-title" className="font-display text-3xl text-sinner-ivory">Filters</h2><button type="button" onClick={() => setOpen(false)} aria-label="Close filters" className="grid h-10 w-10 place-items-center rounded-lg border hairline text-sinner-mist"><X size={19} /></button></div>
-            <FilterForm query={query} idPrefix="mobile" onApply={() => setOpen(false)} />
+            <FilterForm query={query} amenities={amenities} idPrefix="mobile" onApply={() => setOpen(false)} />
           </section>
         </div>
       ) : null}
