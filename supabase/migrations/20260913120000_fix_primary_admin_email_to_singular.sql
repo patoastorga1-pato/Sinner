@@ -1,4 +1,4 @@
--- Correct primary admin email for SINNER.
+-- Correct SINNER primary admin email to sinner.adult@gmail.com.
 
 create or replace function private.assign_primary_admin_role()
 returns trigger

@@ -1,4 +1,4 @@
--- Correct primary admin email for SINNER.
+-- Run this in Supabase SQL Editor to make sinner.adult@gmail.com the primary admin.
 
 create or replace function private.assign_primary_admin_role()
 returns trigger
