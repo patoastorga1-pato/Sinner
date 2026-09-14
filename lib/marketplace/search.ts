@@ -9,11 +9,16 @@ import {
 } from "@/lib/types/marketplace";
 
 const ALLOWED_USE_PARAMS: Record<string, string> = {
+  couples: "couples",
   photography: "photography",
   video: "video_recording",
+  professionalProductions: "professional_productions",
   commercialContent: "commercial_content",
+  creatorContent: "creator_content",
   groups: "groups",
+  privateEvents: "private_events",
   events: "events",
+  propsEquipment: "props_equipment_allowed",
 };
 
 function first(value: string | string[] | undefined) {
@@ -81,9 +86,12 @@ export function parseSpaceSearchParams(raw: RawSearchParams): SpaceSearchQuery {
   const type = SPACE_TYPES.some((item) => item.value === rawType) ? (rawType as SpaceType) : "";
   const rawSort = first(raw.sort);
   const sort = SORT_OPTIONS.some((item) => item.value === rawSort) ? (rawSort as SortOption) : "recommended";
-  const allowedUses = Object.entries(ALLOWED_USE_PARAMS)
-    .filter(([parameter]) => boolean(raw[parameter]))
-    .map(([, slug]) => slug);
+  const allowedUses = [
+    ...list(raw.allowedUses),
+    ...Object.entries(ALLOWED_USE_PARAMS)
+      .filter(([parameter]) => boolean(raw[parameter]))
+      .map(([, slug]) => slug),
+  ];
 
   return {
     location: first(raw.location).trim().slice(0, 120),
@@ -96,7 +104,7 @@ export function parseSpaceSearchParams(raw: RawSearchParams): SpaceSearchQuery {
     privacy: optionalNumber(raw.privacy, 0, 10),
     type,
     amenities: list(raw.amenities),
-    allowedUses,
+    allowedUses: Array.from(new Set(allowedUses)),
     creatorFriendly: boolean(raw.creatorFriendly),
     groupFriendly: boolean(raw.groupFriendly),
     eventsAllowed: boolean(raw.eventsAllowed),
@@ -122,9 +130,7 @@ export function searchQueryToParams(query: SpaceSearchQuery, includePage = true)
   if (query.groupFriendly) params.set("groupFriendly", "true");
   if (query.eventsAllowed) params.set("eventsAllowed", "true");
   if (query.instantBooking) params.set("instantBooking", "true");
-  for (const [parameter, slug] of Object.entries(ALLOWED_USE_PARAMS)) {
-    if (query.allowedUses.includes(slug)) params.set(parameter, "true");
-  }
+  query.allowedUses.forEach((use) => params.append("allowedUses", use));
   if (query.sort !== "recommended") params.set("sort", query.sort);
   if (includePage && query.page > 1) params.set("page", String(query.page));
   return params;

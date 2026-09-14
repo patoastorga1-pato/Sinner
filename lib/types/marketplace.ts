@@ -11,9 +11,9 @@ export const SPACE_TYPES = [
 export const SORT_OPTIONS = [
   { value: "recommended", label: "Recommended" },
   { value: "rating", label: "Highest rated" },
-  { value: "privacy", label: "Highest Privacy Score" },
-  { value: "price-asc", label: "Price: Low to High" },
-  { value: "price-desc", label: "Price: High to Low" },
+  { value: "privacy", label: "Highest privacy" },
+  { value: "price-asc", label: "Price: low to high" },
+  { value: "price-desc", label: "Price: high to low" },
   { value: "newest", label: "Newest" },
 ] as const;
 

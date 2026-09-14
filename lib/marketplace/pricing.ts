@@ -23,8 +23,8 @@ export function getStartingPrice(prices: {
   fullDayPrice: number | null;
 }) {
   if (prices.hourlyPrice !== null) return { value: prices.hourlyPrice, unit: "/ hour" };
-  if (prices.overnightPrice !== null) return { value: prices.overnightPrice, unit: "overnight" };
-  if (prices.fullDayPrice !== null) return { value: prices.fullDayPrice, unit: "full day" };
+  if (prices.overnightPrice !== null) return { value: prices.overnightPrice, unit: "/ night" };
+  if (prices.fullDayPrice !== null) return { value: prices.fullDayPrice, unit: "/ day" };
   return null;
 }
 

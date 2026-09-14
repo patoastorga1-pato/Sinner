@@ -179,8 +179,7 @@ function searchDevelopmentSpaces(query: SpaceSearchQuery): SpaceSearchResult {
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Math.min(query.page, totalPages);
-  const start = (page - 1) * PAGE_SIZE;
-  return { spaces: filtered.slice(start, start + PAGE_SIZE), total, page, pageSize: PAGE_SIZE, totalPages };
+  return { spaces: filtered.slice(0, page * PAGE_SIZE), total, page, pageSize: PAGE_SIZE, totalPages };
 }
 
 export async function searchSpaces(query: SpaceSearchQuery): Promise<SpaceSearchResult> {
@@ -205,8 +204,8 @@ export async function searchSpaces(query: SpaceSearchQuery): Promise<SpaceSearch
     p_events_allowed: query.eventsAllowed,
     p_instant_booking: query.instantBooking,
     p_sort: query.sort,
-    p_page: query.page,
-    p_page_size: PAGE_SIZE,
+    p_page: 1,
+    p_page_size: Math.max(1, query.page) * PAGE_SIZE,
   });
 
   if (error) {
@@ -259,6 +258,11 @@ export type MarketplaceAmenityFilter = {
   category: string;
 };
 
+export type MarketplaceAllowedUseFilter = {
+  slug: string;
+  label: string;
+};
+
 function getDevelopmentAmenityFilters(): MarketplaceAmenityFilter[] {
   const bySlug = new Map<string, MarketplaceAmenityFilter>();
   developmentSpaces.forEach((space) => {
@@ -292,6 +296,34 @@ export async function getMarketplaceAmenityFilters(): Promise<MarketplaceAmenity
     slug: String(row.slug),
     label: String(row.name),
     category: String(row.category ?? "general"),
+  }));
+}
+
+function getDevelopmentAllowedUseFilters(): MarketplaceAllowedUseFilter[] {
+  const bySlug = new Map<string, MarketplaceAllowedUseFilter>();
+  developmentSpaces.forEach((space) => {
+    space.allowedUses.forEach((use) => {
+      if (use.allowed && !bySlug.has(use.slug)) bySlug.set(use.slug, { slug: use.slug, label: use.name });
+    });
+  });
+  return Array.from(bySlug.values()).sort((a, b) => a.label.localeCompare(b.label));
+}
+
+export async function getMarketplaceAllowedUseFilters(): Promise<MarketplaceAllowedUseFilter[]> {
+  if (shouldUseDevelopmentFixtures()) return getDevelopmentAllowedUseFilters();
+  const supabase = await createClient();
+  if (!supabase) return getDevelopmentAllowedUseFilters();
+
+  const { data, error } = await supabase
+    .from("allowed_uses")
+    .select("slug,name")
+    .order("name", { ascending: true });
+
+  if (error || !data?.length) return getDevelopmentAllowedUseFilters();
+
+  return asRows(data).map((row) => ({
+    slug: String(row.slug),
+    label: String(row.name),
   }));
 }
 
