@@ -42,8 +42,6 @@ type SpaceWrite = {
 
 type SpaceUpdate = Partial<SpaceWrite> & {
   exact_address?: string;
-  latitude?: number;
-  longitude?: number;
 };
 
 function value(formData: FormData, key: string) {
@@ -65,6 +63,10 @@ function optionalNumericValue(formData: FormData, key: string) {
   if (!text) return null;
   const result = Number(text);
   return Number.isFinite(result) ? result : null;
+}
+
+function publicLocation(payload: Pick<SpaceWrite, "locality" | "city" | "state">) {
+  return [payload.locality, payload.city, payload.state].filter(Boolean).join(", ");
 }
 
 function checked(formData: FormData, key: string) {
@@ -92,7 +94,7 @@ function parseRules(formData: FormData) {
 }
 
 function buildSpacePayload(formData: FormData, status: SpaceStatus): SpaceWrite {
-  return {
+  const payload: SpaceWrite = {
     name: value(formData, "name"),
     short_description: optionalText(formData, "short_description"),
     description: optionalText(formData, "description"),
@@ -101,8 +103,8 @@ function buildSpacePayload(formData: FormData, status: SpaceStatus): SpaceWrite 
     city: value(formData, "city"),
     state: value(formData, "state"),
     country: value(formData, "country") || "Mexico",
-    country_code: value(formData, "country_code") || "MX",
-    state_code: optionalText(formData, "state_code"),
+    country_code: (value(formData, "country_code") || "MX").toUpperCase(),
+    state_code: optionalText(formData, "state_code")?.toUpperCase() ?? null,
     municipality: optionalText(formData, "municipality"),
     locality: optionalText(formData, "locality"),
     postal_code: optionalText(formData, "postal_code"),
@@ -124,6 +126,31 @@ function buildSpacePayload(formData: FormData, status: SpaceStatus): SpaceWrite 
     buffer_minutes: Math.max(0, numericValue(formData, "buffer_minutes", 30)),
     house_rules: parseRules(formData),
   };
+  payload.approximate_location = payload.approximate_location || publicLocation(payload) || null;
+  return payload;
+}
+
+function validateListingForReview(payload: SpaceWrite, formData: FormData, returnPath: string) {
+  const missing: string[] = [];
+  const exactAddress = optionalText(formData, "exact_address");
+
+  if (!payload.name) missing.push("name");
+  if (!payload.description && !payload.short_description) missing.push("description");
+  if (!payload.country) missing.push("country");
+  if (!payload.country_code) missing.push("country code");
+  if (!payload.state) missing.push("state");
+  if (!payload.state_code) missing.push("state code");
+  if (!payload.municipality) missing.push("municipality");
+  if (!payload.city) missing.push("city");
+  if (!payload.locality) missing.push("locality / neighborhood");
+  if (!payload.postal_code) missing.push("postal code");
+  if (!payload.approximate_location) missing.push("public location");
+  if (!exactAddress) missing.push("exact address");
+  if (!payload.hourly_price && !payload.overnight_price && !payload.full_day_price) missing.push("at least one price");
+
+  if (missing.length) {
+    redirect(withMessage(returnPath, "error", `Before submitting for review, complete: ${missing.join(", ")}.`));
+  }
 }
 
 function getSelectedIds(formData: FormData, key: string) {
@@ -193,8 +220,10 @@ export async function createHostListingAction(formData: FormData) {
   const { supabase, userId } = await requireHostSupabase(returnPath);
   const payload = buildSpacePayload(formData, status);
 
-  if (!payload.name || !payload.city || !payload.state) {
-    redirect(withMessage(returnPath, "error", "Name, city and state are required."));
+  if (status === "pending_review") {
+    validateListingForReview(payload, formData, returnPath);
+  } else if (!payload.name) {
+    redirect(withMessage(returnPath, "error", "Name is required to save a draft."));
   }
 
   const { data, error } = await supabase
@@ -204,8 +233,6 @@ export async function createHostListingAction(formData: FormData) {
       host_id: userId,
       slug: slugify(payload.name),
       exact_address: optionalText(formData, "exact_address"),
-      latitude: optionalNumericValue(formData, "latitude"),
-      longitude: optionalNumericValue(formData, "longitude"),
     })
     .select("id")
     .single();
@@ -229,14 +256,16 @@ export async function updateHostListingAction(formData: FormData) {
   const { supabase, userId } = await requireHostSupabase(returnPath);
   const payload = buildSpacePayload(formData, status);
   const exactAddress = optionalText(formData, "exact_address");
-  const latitude = optionalNumericValue(formData, "latitude");
-  const longitude = optionalNumericValue(formData, "longitude");
+
+  if (status === "pending_review") {
+    validateListingForReview(payload, formData, returnPath);
+  } else if (!payload.name) {
+    redirect(withMessage(returnPath, "error", "Name is required to save a draft."));
+  }
 
   const updatePayload: SpaceUpdate = { ...payload };
   if (!value(formData, "postal_code")) delete updatePayload.postal_code;
   if (exactAddress) updatePayload.exact_address = exactAddress;
-  if (latitude !== null) updatePayload.latitude = latitude;
-  if (longitude !== null) updatePayload.longitude = longitude;
   const { error } = await supabase.from("spaces").update(updatePayload).eq("id", listingId).eq("host_id", userId);
   if (error) redirect(withMessage(returnPath, "error", error.message));
 

@@ -1,5 +1,6 @@
 import { SPACE_TYPES } from "@/lib/types/marketplace";
 import type { HostCatalogOption, HostListing } from "@/lib/data-access/host";
+import { HostLocationFields } from "@/components/host/HostLocationFields";
 
 function textValue(value: string | number | null | undefined) {
   return value === null || value === undefined ? "" : String(value);
@@ -98,21 +99,21 @@ export function HostListingForm({
 
       <section className="premium-panel p-6 sm:p-8">
         <h2 className="font-display text-3xl text-sinner-ivory">Mexico location</h2>
-        <div className="mt-6 grid gap-5 sm:grid-cols-2">
-          <Field label="Country" name="country" defaultValue={listing?.country ?? "Mexico"} />
-          <Field label="Country code" name="country_code" defaultValue={listing?.countryCode ?? "MX"} />
-          <Field label="State" name="state" defaultValue={listing?.state} />
-          <Field label="State code" name="state_code" defaultValue={listing?.stateCode} required={false} />
-          <Field label="Municipality" name="municipality" defaultValue={listing?.municipality} required={false} />
-          <Field label="City" name="city" defaultValue={listing?.city} />
-          <Field label="Locality / neighborhood" name="locality" defaultValue={listing?.locality} required={false} />
-          <Field label="Postal code" name="postal_code" required={false} />
-          <Field label="Latitude" name="latitude" type="number" required={false} />
-          <Field label="Longitude" name="longitude" type="number" required={false} />
-        </div>
-        <div className="mt-5 grid gap-5">
-          <Field label="Public approximate location" name="approximate_location" defaultValue={listing?.approximateLocation} required={false} />
-          <Field label={listing ? "Exact address (leave blank to keep protected address)" : "Exact address"} name="exact_address" required={false} />
+        <div className="mt-6">
+          <HostLocationFields
+            defaults={{
+              country: listing?.country,
+              countryCode: listing?.countryCode,
+              state: listing?.state,
+              stateCode: listing?.stateCode ?? undefined,
+              municipality: listing?.municipality ?? undefined,
+              city: listing?.city,
+              locality: listing?.locality ?? undefined,
+              postalCode: listing?.postalCode ?? undefined,
+              approximateLocation: listing?.approximateLocation ?? undefined,
+              exactAddress: listing?.exactAddress ?? undefined,
+            }}
+          />
         </div>
       </section>
 
@@ -156,7 +157,7 @@ export function HostListingForm({
 
       <div className="flex flex-wrap gap-3">
         <button type="submit" name="intent" value="submit" className="min-h-12 rounded-lg bg-sinner-gold px-5 font-semibold text-black transition hover:bg-sinner-goldSoft">Submit for review</button>
-        <button type="submit" name="intent" value="draft" className="min-h-12 rounded-lg border hairline px-5 font-semibold text-sinner-mist transition hover:text-white">Save draft</button>
+        <button type="submit" name="intent" value="draft" formNoValidate className="min-h-12 rounded-lg border hairline px-5 font-semibold text-sinner-mist transition hover:text-white">Save draft</button>
       </div>
     </form>
   );
