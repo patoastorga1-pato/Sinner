@@ -156,21 +156,23 @@ export async function logoutAction() {
 }
 
 export async function updateProfileAction(formData: FormData) {
+  const returnPath = safeRedirectPath(value(formData, "return_path"), "/settings");
   const parsed = profileSchema.safeParse({
     firstName: value(formData, "firstName"),
     lastName: value(formData, "lastName"),
     displayName: value(formData, "displayName"),
+    avatarUrl: value(formData, "avatarUrl"),
     bio: value(formData, "bio"),
   });
 
   if (!parsed.success) {
-    redirect(withMessage("/settings", "error", firstValidationError(parsed.error)));
+    redirect(withMessage(returnPath, "error", firstValidationError(parsed.error)));
   }
 
-  const supabase = await requireSupabase("/settings");
+  const supabase = await requireSupabase(returnPath);
   const { data } = await supabase.auth.getUser();
 
-  if (!data.user) redirect("/login?redirect=/settings");
+  if (!data.user) redirect(`/login?redirect=${encodeURIComponent(returnPath)}`);
 
   const { error } = await supabase
     .from("profiles")
@@ -178,29 +180,33 @@ export async function updateProfileAction(formData: FormData) {
       first_name: parsed.data.firstName,
       last_name: parsed.data.lastName,
       display_name: parsed.data.displayName || null,
+      avatar_url: parsed.data.avatarUrl || null,
       bio: parsed.data.bio || null,
     })
     .eq("id", data.user.id);
 
   if (error) {
-    redirect(withMessage("/settings", "error", error.message));
+    redirect(withMessage(returnPath, "error", error.message));
   }
 
   revalidatePath("/", "layout");
-  redirect("/settings?success=Profile+updated.");
+  revalidatePath("/profile");
+  revalidatePath("/settings");
+  redirect(withMessage(returnPath, "success", "Profile updated."));
 }
 
 export async function updateVerificationAction(formData: FormData) {
+  const returnPath = safeRedirectPath(value(formData, "return_path"), "/verification");
   const gender = value(formData, "gender");
 
   if (gender !== "male" && gender !== "female") {
-    redirect(withMessage("/settings", "error", "Choose hombre or mujer for identity."));
+    redirect(withMessage(returnPath, "error", "Choose hombre or mujer for identity."));
   }
 
-  const supabase = await requireSupabase("/settings");
+  const supabase = await requireSupabase(returnPath);
   const { data } = await supabase.auth.getUser();
 
-  if (!data.user) redirect("/login?redirect=/settings");
+  if (!data.user) redirect(`/login?redirect=${encodeURIComponent(returnPath)}`);
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -227,11 +233,11 @@ export async function updateVerificationAction(formData: FormData) {
 
   if (document) {
     if (!identityDocumentMimeTypes.has(document.type)) {
-      redirect(withMessage("/settings", "error", "Upload a JPG, PNG or WEBP identification photo."));
+      redirect(withMessage(returnPath, "error", "Upload a JPG, PNG or WEBP identification photo."));
     }
 
     if (document.size > identityDocumentMaxBytes) {
-      redirect(withMessage("/settings", "error", "Identification photo must be 8 MB or smaller."));
+      redirect(withMessage(returnPath, "error", "Identification photo must be 8 MB or smaller."));
     }
 
     const storagePath = `${data.user.id}/${crypto.randomUUID()}.${documentExtension(document)}`;
@@ -243,7 +249,7 @@ export async function updateVerificationAction(formData: FormData) {
       });
 
     if (uploadError) {
-      redirect(withMessage("/settings", "error", uploadError.message));
+      redirect(withMessage(returnPath, "error", uploadError.message));
     }
 
     updates.age_verification_document_path = storagePath;
@@ -252,20 +258,21 @@ export async function updateVerificationAction(formData: FormData) {
     updates.age_verification_reviewed_at = null;
     updates.age_verification_rejection_reason = null;
   } else if (needsDocument) {
-    redirect(withMessage("/settings", "error", "Upload a photo of your identification to verify your age."));
+    redirect(withMessage(returnPath, "error", "Upload a photo of your identification to verify your age."));
   }
 
   const { error } = await supabase.from("profiles").update(updates).eq("id", data.user.id);
 
   if (error) {
-    redirect(withMessage("/settings", "error", error.message));
+    redirect(withMessage(returnPath, "error", error.message));
   }
 
   revalidatePath("/", "layout");
   revalidatePath("/profile");
+  revalidatePath("/verification");
   revalidatePath("/settings");
   revalidatePath("/admin/profiles");
-  redirect("/settings?success=Verification+information+saved.");
+  redirect(withMessage(returnPath, "success", "Verification information saved."));
 }
 
 export async function becomeHostAction() {
@@ -302,16 +309,17 @@ export async function markAllNotificationsReadAction() {
 }
 
 export async function updatePasswordAction(formData: FormData) {
+  const returnPath = safeRedirectPath(value(formData, "return_path"), "/security");
   const parsed = resetPasswordSchema.safeParse({
     password: value(formData, "password"),
     confirmPassword: value(formData, "confirmPassword"),
   });
 
-  if (!parsed.success) redirect(withMessage("/settings", "error", firstValidationError(parsed.error)));
-  const supabase = await requireSupabase("/settings");
+  if (!parsed.success) redirect(withMessage(returnPath, "error", firstValidationError(parsed.error)));
+  const supabase = await requireSupabase(returnPath);
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
-  if (error) redirect(withMessage("/settings", "error", error.message));
-  redirect("/settings?success=Password+updated.");
+  if (error) redirect(withMessage(returnPath, "error", error.message));
+  redirect(withMessage(returnPath, "success", "Password updated."));
 }
 
 export async function configurationAvailable() {

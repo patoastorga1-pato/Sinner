@@ -64,7 +64,7 @@ export default async function BookingDetailPage({
           </section>
 
           {booking.status === "completed" ? (
-            <section className="mt-10 border-t hairline pt-8">
+            <section id="review" className="mt-10 scroll-mt-24 border-t hairline pt-8">
               <div className="flex items-center gap-3"><Star size={19} className="text-sinner-goldSoft" /><h2 className="font-display text-4xl text-sinner-ivory">Review this space</h2></div>
               {userReview ? (
                 <div className="mt-5 rounded-xl border hairline bg-white/[0.025] p-5">

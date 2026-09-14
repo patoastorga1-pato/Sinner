@@ -1,4 +1,4 @@
-import { LifeBuoy } from "lucide-react";
+import { AlertTriangle, BookOpen, LifeBuoy } from "lucide-react";
 import { createSupportTicketAction } from "@/app/actions/support";
 import { AccountShell } from "@/components/account/AccountShell";
 import { StatusMessage } from "@/components/ui/StatusMessage";
@@ -20,8 +20,13 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
   const [, params, tickets] = await Promise.all([requireUser("/support"), searchParams, getSupportTickets()]);
 
   return (
-    <AccountShell title="Support" copy="Private support requests tied to your SINNER account.">
+    <AccountShell title="Support" copy="Contact support, report a problem or review help resources.">
       <StatusMessage error={params.error} success={params.success} />
+      <div className="mb-6 grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border hairline bg-white/[0.018] p-5"><LifeBuoy size={18} className="text-sinner-goldSoft" /><h2 className="mt-4 font-semibold text-sinner-ivory">Contact support</h2><p className="mt-2 text-sm leading-6 text-sinner-mist">Create a private ticket for account, booking or safety help.</p></div>
+        <div className="rounded-2xl border hairline bg-white/[0.018] p-5"><AlertTriangle size={18} className="text-sinner-goldSoft" /><h2 className="mt-4 font-semibold text-sinner-ivory">Report a problem</h2><p className="mt-2 text-sm leading-6 text-sinner-mist">Use the ticket form and choose safety or technical as needed.</p></div>
+        <div className="rounded-2xl border hairline bg-white/[0.018] p-5"><BookOpen size={18} className="text-sinner-goldSoft" /><h2 className="mt-4 font-semibold text-sinner-ivory">Help center</h2><p className="mt-2 text-sm leading-6 text-sinner-mist">Prepared for future self-service articles.</p></div>
+      </div>
       <div className="grid gap-8 lg:grid-cols-[420px_minmax(0,1fr)]">
         <form action={createSupportTicketAction} className="premium-panel p-6 sm:p-8">
           <div className="flex items-center gap-3"><LifeBuoy size={19} className="text-sinner-goldSoft" /><h2 className="font-display text-3xl text-sinner-ivory">New request</h2></div>

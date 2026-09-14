@@ -20,9 +20,15 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
         <aside className="premium-panel max-h-[680px] overflow-y-auto p-3">
           {conversationsResult.conversations.map((conversation) => (
             <Link key={conversation.id} href={`/messages?conversation=${conversation.id}`} className={`block rounded-lg p-4 transition ${selected?.id === conversation.id ? "bg-sinner-gold/10 text-sinner-ivory" : "text-sinner-mist hover:bg-white/[0.04]"}`}>
-              <p className="truncate font-medium">{conversation.participantName}</p>
-              <p className="mt-1 truncate text-xs">{conversation.spaceName}</p>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{conversation.participantName}</p>
+                  <p className="mt-1 truncate text-xs">{conversation.spaceName}</p>
+                </div>
+                {conversation.unreadCount ? <span className="min-w-5 rounded-full bg-sinner-violet px-1.5 text-center text-[0.65rem] font-bold leading-5 text-white">{Math.min(conversation.unreadCount, 99)}</span> : null}
+              </div>
               <p className="mt-2 line-clamp-2 text-sm">{conversation.lastMessage || "No messages yet."}</p>
+              <time className="mt-2 block text-xs text-sinner-mist/60">{new Date(conversation.lastMessageAt).toLocaleString()}</time>
             </Link>
           ))}
           {!conversationsResult.conversations.length ? <p className="p-4 text-sm text-sinner-mist">No conversations yet.</p> : null}

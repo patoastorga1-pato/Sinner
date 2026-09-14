@@ -10,8 +10,7 @@ import { getGuestBookings } from "@/lib/data-access/bookings";
 import type { RawSearchParams } from "@/lib/types/marketplace";
 
 const tabs: Array<{ key: string; label: string; statuses: AppBookingStatus[] }> = [
-  { key: "pending", label: "Pending", statuses: ["pending", "payment_pending"] },
-  { key: "upcoming", label: "Upcoming", statuses: ["confirmed"] },
+  { key: "upcoming", label: "Upcoming", statuses: ["pending", "payment_pending", "confirmed"] },
   { key: "completed", label: "Completed", statuses: ["completed"] },
   { key: "cancelled", label: "Cancelled", statuses: ["cancelled", "declined", "expired", "refunded"] },
 ] as const;
@@ -23,7 +22,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
   const visible = bookings.filter((booking) => selected.statuses.includes(booking.status));
 
   return (
-    <AccountShell title="Bookings" copy="Track requests, temporary holds and future confirmed reservations.">
+    <AccountShell title="Bookings" copy="Track upcoming, completed and cancelled reservations.">
       <StatusMessage error={params.error as string | undefined} success={params.success as string | undefined} />
       <nav className="soft-scrollbar flex gap-2 overflow-x-auto">
         {tabs.map((tab) => <Link key={tab.key} href={`/bookings?tab=${tab.key}`} className={`min-w-fit rounded-lg px-4 py-2 text-sm ${selected.key === tab.key ? "bg-sinner-gold text-black" : "border hairline text-sinner-mist hover:text-white"}`}>{tab.label}</Link>)}
