@@ -7,6 +7,7 @@ export const adminLinks = [
   ["Profiles", "/admin/profiles"],
   ["Host Requests", "/admin/host-requests"],
   ["Hosts", "/admin/hosts"],
+  ["Listing Reviews", "/admin/listing-reviews"],
   ["Publications", "/admin/listings"],
   ["Bookings", "/admin/bookings"],
   ["Reports", "/admin/reports"],
