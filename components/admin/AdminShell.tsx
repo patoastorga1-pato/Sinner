@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 export const adminLinks = [
   ["Dashboard", "/admin"],
   ["Profiles", "/admin/profiles"],
+  ["Host Requests", "/admin/host-requests"],
   ["Hosts", "/admin/hosts"],
   ["Publications", "/admin/listings"],
   ["Bookings", "/admin/bookings"],

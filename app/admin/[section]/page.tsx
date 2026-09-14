@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MessageCircle, Settings, ShieldAlert } from "lucide-react";
-import { updateProfileVerificationAction, updatePublicationStatusAction, updateReportStatusAction, updateSupportTicketAction } from "@/app/actions/admin";
+import { MessageCircle, Settings, ShieldAlert, UserRound } from "lucide-react";
+import { approveHostRequestAction, rejectHostRequestAction, updateProfileVerificationAction, updatePublicationStatusAction, updateReportStatusAction, updateSupportTicketAction } from "@/app/actions/admin";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { requireRole } from "@/lib/auth/server";
@@ -9,6 +9,7 @@ import { formatBookingRange } from "@/lib/bookings/time";
 import {
   getAdminBookings,
   getAdminConversations,
+  getAdminHostApplications,
   getAdminPayments,
   getAdminPayouts,
   getAdminPublications,
@@ -17,15 +18,19 @@ import {
   getAdminSettings,
   getAdminSupportTickets,
   getAdminUsers,
+  getHostApplicationCounts,
+  type AdminHostApplication,
   type AdminUser,
   type AdminPublication,
 } from "@/lib/data-access/admin";
 import { formatMoney } from "@/lib/marketplace/pricing";
-import type { ListingStatus, SpaceStatus } from "@/lib/types/database";
+import type { HostApplicationStatus, ListingStatus, SpaceStatus } from "@/lib/types/database";
 
 const sections = {
   profiles: { title: "Profiles", copy: "User profiles, roles, verification state and activity signals." },
   users: { title: "Profiles", copy: "User profiles, roles, verification state and activity signals." },
+  "host-requests": { title: "Host Requests", copy: "Approve or reject users who ask to publish spaces as hosts." },
+  "host-approvals": { title: "Host Requests", copy: "Approve or reject users who ask to publish spaces as hosts." },
   hosts: { title: "Hosts", copy: "Host accounts, listing volume and current moderation signals." },
   listings: { title: "Publications", copy: "Spaces, experiences and events that can be reviewed or moderated." },
   bookings: { title: "Bookings", copy: "Reservation requests and booking state across the platform." },
@@ -39,6 +44,7 @@ const sections = {
 } as const;
 
 const publicationStatuses: Array<SpaceStatus | ListingStatus> = ["draft", "pending_review", "approved", "rejected", "suspended"];
+const hostApplicationStatuses: HostApplicationStatus[] = ["pending", "approved", "rejected", "suspended"];
 
 function AdminTable({ children }: { children: React.ReactNode }) {
   return <div className="overflow-hidden rounded-xl border hairline bg-white/[0.025]"><div className="soft-scrollbar overflow-x-auto">{children}</div></div>;
@@ -88,6 +94,50 @@ function PublicationStatusForm({ publication }: { publication: AdminPublication 
   );
 }
 
+function applicantName(application: AdminHostApplication) {
+  const profile = application.profile;
+  return profile?.display_name || `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim() || "SINNER member";
+}
+
+function HostRequestCard({ application, returnPath }: { application: AdminHostApplication; returnPath: string }) {
+  return (
+    <article className="rounded-xl border hairline bg-white/[0.025] p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-sinner-gold/25 text-sinner-goldSoft"><UserRound size={18} /></span>
+            <div className="min-w-0">
+              <h3 className="truncate font-display text-3xl text-sinner-ivory">{applicantName(application)}</h3>
+              <p className="mt-1 truncate text-sm text-sinner-mist">{application.applicant_email ?? application.user_id}</p>
+            </div>
+          </div>
+          <p className="mt-4 text-xs text-sinner-mist/70">Requested {new Date(application.requested_at).toLocaleString()}</p>
+          {application.request_note ? <p className="mt-4 rounded-lg border hairline bg-black/20 p-3 text-sm leading-6 text-sinner-mist">{application.request_note}</p> : null}
+          {application.decision_note ? <p className="mt-4 text-sm leading-6 text-sinner-mist">Decision note: {application.decision_note}</p> : null}
+        </div>
+        <StatusPill value={application.status} />
+      </div>
+
+      {application.status === "pending" ? (
+        <div className="mt-5 grid gap-3 border-t hairline pt-5 lg:grid-cols-2">
+          <form action={approveHostRequestAction} className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <input type="hidden" name="request_id" value={application.id} />
+            <input type="hidden" name="return_path" value={returnPath} />
+            <input name="decision_note" placeholder="Optional approval note" className="h-11 rounded-lg border hairline bg-black/30 px-3 text-sm text-sinner-ivory outline-none placeholder:text-sinner-mist/60" />
+            <button type="submit" className="min-h-11 rounded-lg bg-sinner-gold px-4 text-sm font-semibold text-black transition hover:bg-sinner-goldSoft">Approve host</button>
+          </form>
+          <form action={rejectHostRequestAction} className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <input type="hidden" name="request_id" value={application.id} />
+            <input type="hidden" name="return_path" value={returnPath} />
+            <input name="decision_note" placeholder="Reason for rejection" className="h-11 rounded-lg border hairline bg-black/30 px-3 text-sm text-sinner-ivory outline-none placeholder:text-sinner-mist/60" />
+            <button type="submit" className="min-h-11 rounded-lg border border-rose-300/30 px-4 text-sm font-semibold text-rose-200 transition hover:bg-rose-500/10">Reject</button>
+          </form>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
 function ProfileVerificationForm({ user, returnPath }: { user: AdminUser; returnPath: string }) {
   return (
     <form action={updateProfileVerificationAction} className="grid min-w-72 gap-2">
@@ -127,6 +177,45 @@ export default async function AdminSectionPage({
   const section = sections[key as keyof typeof sections];
   if (!section) notFound();
   await requireRole("admin", `/admin/${key}`);
+
+  if (key === "host-requests" || key === "host-approvals") {
+    const [applications, counts] = await Promise.all([getAdminHostApplications(), getHostApplicationCounts()]);
+    const pendingApplications = applications.filter((application) => application.status === "pending");
+
+    return (
+      <AdminShell title={section.title} copy={section.copy}>
+        <StatusMessage error={query.error} success={query.success} />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {hostApplicationStatuses.map((status) => (
+            <SummaryCard
+              key={status}
+              label={`${status.replace(/_/g, " ")} requests`}
+              value={counts[status]}
+              detail={status === "pending" ? "Need admin approval before the user can publish." : "Host onboarding application status."}
+            />
+          ))}
+        </div>
+
+        <section className="mt-8">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase text-sinner-goldSoft">Host access</p>
+              <h2 className="mt-2 font-display text-4xl text-sinner-ivory">Requests to review</h2>
+            </div>
+            <p className="text-sm text-sinner-mist">{pendingApplications.length} pending</p>
+          </div>
+
+          <div className="mt-6 grid gap-5">
+            {applications.length ? applications.map((application) => (
+              <HostRequestCard key={application.id} application={application} returnPath={`/admin/${key}`} />
+            )) : (
+              <EmptyPanel title="No host requests yet." copy="New host access requests will appear here after users submit onboarding." />
+            )}
+          </div>
+        </section>
+      </AdminShell>
+    );
+  }
 
   if (key === "profiles" || key === "users" || key === "hosts") {
     const users = await getAdminUsers();
