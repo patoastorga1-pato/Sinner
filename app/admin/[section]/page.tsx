@@ -91,6 +91,12 @@ function formatDate(value: string) {
   return new Date(value).toLocaleDateString();
 }
 
+function genderLabel(gender?: string | null) {
+  if (gender === "male") return "Hombre";
+  if (gender === "female") return "Mujer";
+  return "Not selected";
+}
+
 export default async function AdminSectionPage({
   params,
   searchParams,
@@ -119,11 +125,12 @@ export default async function AdminSectionPage({
         </div>
         <div className="mt-6">
           <AdminTable>
-            <table className="w-full min-w-[1120px] border-collapse">
+            <table className="w-full min-w-[1240px] border-collapse">
               <thead className="text-left text-xs uppercase text-sinner-mist/70">
                 <tr>
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Roles</th>
+                  <th className="px-4 py-3">Gender</th>
                   <th className="px-4 py-3">Identity</th>
                   <th className="px-4 py-3">Age</th>
                   <th className="px-4 py-3">Listings</th>
@@ -140,8 +147,13 @@ export default async function AdminSectionPage({
                       <p className="mt-1 text-xs text-sinner-mist/60">{user.id.slice(0, 8)}</p>
                     </Cell>
                     <Cell muted>{user.roles.join(", ") || "none"}</Cell>
+                    <Cell muted>{genderLabel(user.gender)}</Cell>
                     <Cell><StatusPill value={user.identityStatus} /></Cell>
-                    <Cell><StatusPill value={user.ageStatus} /></Cell>
+                    <Cell>
+                      <StatusPill value={user.ageStatus} />
+                      {user.ageSubmittedAt ? <p className="mt-2 text-xs text-sinner-mist/60">Submitted {formatDate(user.ageSubmittedAt)}</p> : null}
+                      {user.ageDocumentUrl ? <a href={user.ageDocumentUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs font-semibold text-sinner-goldSoft hover:text-sinner-gold">View ID</a> : user.ageDocumentPath ? <p className="mt-2 text-xs text-sinner-mist/60">Document stored</p> : null}
+                    </Cell>
                     <Cell muted>{user.approvedListingCount}/{user.listingCount} approved</Cell>
                     <Cell muted>{user.bookingCount}</Cell>
                     <Cell muted>{user.openReports} reports · {user.openSupportTickets} support · {user.reviewCount} reviews</Cell>

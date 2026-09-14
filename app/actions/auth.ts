@@ -14,8 +14,23 @@ import {
 } from "@/lib/auth/validation";
 import { createClient } from "@/lib/supabase/server";
 
+const identityDocumentBucket = "identity-documents";
+const identityDocumentMaxBytes = 8 * 1024 * 1024;
+const identityDocumentMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+
 function value(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
+}
+
+function uploadedFile(formData: FormData, key: string) {
+  const entry = formData.get(key);
+  return entry instanceof File && entry.size > 0 ? entry : null;
+}
+
+function documentExtension(file: File) {
+  if (file.type === "image/png") return "png";
+  if (file.type === "image/webp") return "webp";
+  return "jpg";
 }
 
 async function requireSupabase(returnPath: string) {
@@ -173,6 +188,84 @@ export async function updateProfileAction(formData: FormData) {
 
   revalidatePath("/", "layout");
   redirect("/settings?success=Profile+updated.");
+}
+
+export async function updateVerificationAction(formData: FormData) {
+  const gender = value(formData, "gender");
+
+  if (gender !== "male" && gender !== "female") {
+    redirect(withMessage("/settings", "error", "Choose hombre or mujer for identity."));
+  }
+
+  const supabase = await requireSupabase("/settings");
+  const { data } = await supabase.auth.getUser();
+
+  if (!data.user) redirect("/login?redirect=/settings");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("age_verification_document_path,age_verification_status")
+    .eq("id", data.user.id)
+    .maybeSingle();
+
+  const document = uploadedFile(formData, "ageDocument");
+  const needsDocument =
+    !profile?.age_verification_document_path || profile.age_verification_status === "rejected";
+
+  const updates: {
+    gender: "male" | "female";
+    identity_verification_status: "verified";
+    age_verification_document_path?: string;
+    age_verification_status?: "pending";
+    age_verification_submitted_at?: string;
+    age_verification_reviewed_at?: null;
+    age_verification_rejection_reason?: null;
+  } = {
+    gender,
+    identity_verification_status: "verified",
+  };
+
+  if (document) {
+    if (!identityDocumentMimeTypes.has(document.type)) {
+      redirect(withMessage("/settings", "error", "Upload a JPG, PNG or WEBP identification photo."));
+    }
+
+    if (document.size > identityDocumentMaxBytes) {
+      redirect(withMessage("/settings", "error", "Identification photo must be 8 MB or smaller."));
+    }
+
+    const storagePath = `${data.user.id}/${crypto.randomUUID()}.${documentExtension(document)}`;
+    const { error: uploadError } = await supabase.storage
+      .from(identityDocumentBucket)
+      .upload(storagePath, document, {
+        contentType: document.type,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      redirect(withMessage("/settings", "error", uploadError.message));
+    }
+
+    updates.age_verification_document_path = storagePath;
+    updates.age_verification_status = "pending";
+    updates.age_verification_submitted_at = new Date().toISOString();
+    updates.age_verification_reviewed_at = null;
+    updates.age_verification_rejection_reason = null;
+  } else if (needsDocument) {
+    redirect(withMessage("/settings", "error", "Upload a photo of your identification to verify your age."));
+  }
+
+  const { error } = await supabase.from("profiles").update(updates).eq("id", data.user.id);
+
+  if (error) {
+    redirect(withMessage("/settings", "error", error.message));
+  }
+
+  revalidatePath("/", "layout");
+  revalidatePath("/profile");
+  revalidatePath("/settings");
+  revalidatePath("/admin/profiles");
+  redirect("/settings?success=Verification+information+saved.");
 }
 
 export async function becomeHostAction() {

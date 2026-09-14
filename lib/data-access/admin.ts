@@ -25,8 +25,12 @@ export type AdminHostApplication = HostApplicationRecord & {
 
 export type AdminUser = ProfileSummary & {
   roles: UserRole[];
+  gender: "male" | "female" | null;
   identityStatus: string;
   ageStatus: string;
+  ageDocumentPath: string | null;
+  ageDocumentUrl: string | null;
+  ageSubmittedAt: string | null;
   listingCount: number;
   approvedListingCount: number;
   bookingCount: number;
@@ -353,7 +357,7 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
   const [profilesResult, rolesResult, spacesResult, bookingsResult, reportsResult, supportResult, reviewsResult] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id,first_name,last_name,display_name,identity_verification_status,age_verification_status,created_at")
+      .select("*")
       .order("created_at", { ascending: false })
       .limit(150),
     supabase.from("user_roles").select("user_id,role"),
@@ -395,8 +399,22 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
   const reviewCounts = new Map<string, number>();
   asRows(reviewsResult.data).forEach((row) => increment(reviewCounts, row.author_id));
 
+  const documentUrlsByPath = new Map<string, string>();
+  const documentPaths = Array.from(
+    new Set(asRows(profilesResult.data).map((profile) => String(profile.age_verification_document_path ?? "")).filter(Boolean)),
+  );
+
+  await Promise.all(
+    documentPaths.map(async (path) => {
+      const { data } = await supabase.storage.from("identity-documents").createSignedUrl(path, 60 * 60);
+      if (data?.signedUrl) documentUrlsByPath.set(path, data.signedUrl);
+    }),
+  );
+
   return asRows(profilesResult.data).map((profile) => {
     const id = String(profile.id);
+    const ageDocumentPath = profile.age_verification_document_path ? String(profile.age_verification_document_path) : null;
+    const gender = profile.gender === "male" || profile.gender === "female" ? profile.gender : null;
     return {
       id,
       first_name: String(profile.first_name ?? ""),
@@ -404,8 +422,12 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
       display_name: profile.display_name ? String(profile.display_name) : null,
       created_at: String(profile.created_at),
       roles: rolesByUser.get(id) ?? [],
+      gender,
       identityStatus: String(profile.identity_verification_status ?? "unverified"),
       ageStatus: String(profile.age_verification_status ?? "unverified"),
+      ageDocumentPath,
+      ageDocumentUrl: ageDocumentPath ? documentUrlsByPath.get(ageDocumentPath) ?? null : null,
+      ageSubmittedAt: profile.age_verification_submitted_at ? String(profile.age_verification_submitted_at) : null,
       listingCount: listingCounts.get(id) ?? 0,
       approvedListingCount: approvedListingCounts.get(id) ?? 0,
       bookingCount: bookingCounts.get(id) ?? 0,

@@ -3,6 +3,12 @@ import { AccountShell } from "@/components/account/AccountShell";
 import { requireUser } from "@/lib/auth/server";
 import { getCurrentProfile } from "@/lib/data-access/account";
 
+function genderLabel(gender?: string | null) {
+  if (gender === "male") return "Hombre";
+  if (gender === "female") return "Mujer";
+  return "Not selected";
+}
+
 export default async function ProfilePage() {
   const [auth, profile] = await Promise.all([requireUser("/profile"), getCurrentProfile()]);
 
@@ -26,12 +32,12 @@ export default async function ProfilePage() {
           <h2 className="font-semibold text-sinner-ivory">Account status</h2>
           <div className="mt-5 grid gap-4 text-sm">
             <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-sinner-mist"><BadgeCheck size={16} /> Age verification</span><span className="capitalize text-sinner-goldSoft">{profile?.age_verification_status ?? "unverified"}</span></div>
-            <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-sinner-mist"><ShieldCheck size={16} /> Identity</span><span className="capitalize text-sinner-goldSoft">{profile?.identity_verification_status ?? "unverified"}</span></div>
+            <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-sinner-mist"><ShieldCheck size={16} /> Identity</span><span className="text-sinner-goldSoft">{genderLabel(profile?.gender)}</span></div>
             <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-sinner-mist"><CalendarDays size={16} /> Member since</span><span className="text-sinner-ivory">{profile?.created_at ? new Date(profile.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "Pending"}</span></div>
           </div>
+          {profile?.age_verification_document_path ? <p className="mt-5 rounded-lg border hairline bg-white/[0.025] px-4 py-3 text-xs leading-5 text-sinner-mist">Identification photo received. Admin review can update this status.</p> : null}
         </aside>
       </div>
     </AccountShell>
   );
 }
-

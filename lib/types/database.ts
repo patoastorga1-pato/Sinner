@@ -3,6 +3,7 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type UserRole = "guest" | "host" | "admin";
 export type HostApplicationStatus = "pending" | "approved" | "rejected" | "suspended";
 export type VerificationStatus = "unverified" | "pending" | "verified" | "rejected";
+export type GenderIdentity = "male" | "female";
 export type SpaceStatus = "draft" | "pending_review" | "approved" | "rejected" | "suspended";
 export type AvailabilityStatus = "available" | "blocked" | "reserved";
 export type BookingStatus =
@@ -33,8 +34,13 @@ export interface Profile {
   avatar_url: string | null;
   bio: string | null;
   date_of_birth: string;
+  gender: GenderIdentity | null;
   identity_verification_status: VerificationStatus;
   age_verification_status: VerificationStatus;
+  age_verification_document_path: string | null;
+  age_verification_submitted_at: string | null;
+  age_verification_reviewed_at: string | null;
+  age_verification_rejection_reason: string | null;
   terms_accepted_at: string;
   privacy_accepted_at: string;
   adult_confirmation_at: string;
