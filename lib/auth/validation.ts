@@ -54,10 +54,10 @@ export const profileSchema = z.object({
   firstName: z.string().trim().min(1, "First name is required.").max(80),
   lastName: z.string().trim().min(1, "Last name is required.").max(80),
   displayName: z.string().trim().max(80).optional(),
+  avatarUrl: z.url("Enter a valid avatar URL.").or(z.literal("")).optional(),
   bio: z.string().trim().max(500).optional(),
 });
 
 export function firstValidationError(error: z.ZodError) {
   return error.issues[0]?.message ?? "Please review the form.";
 }
-

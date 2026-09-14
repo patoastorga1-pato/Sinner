@@ -19,6 +19,7 @@ export type ConversationSummary = {
   participantName: string;
   lastMessage: string | null;
   lastMessageAt: string;
+  unreadCount: number;
 };
 
 export type ConversationMessage = {
@@ -52,7 +53,7 @@ export async function getConversations() {
       .in("id", conversationIds)
       .order("updated_at", { ascending: false }),
     supabase.from("conversation_participants").select("conversation_id,user_id").in("conversation_id", conversationIds),
-    supabase.from("messages").select("id,conversation_id,sender_id,body,created_at").in("conversation_id", conversationIds).order("created_at", { ascending: false }),
+    supabase.from("messages").select("id,conversation_id,sender_id,body,read_at,created_at").in("conversation_id", conversationIds).order("created_at", { ascending: false }),
   ]);
 
   const otherIds = Array.from(new Set(asRows(allParticipants).map((row) => String(row.user_id)).filter((id) => id !== userData.user.id)));
@@ -87,6 +88,7 @@ export async function getConversations() {
       participantName: otherId ? profilesById.get(otherId) ?? "SINNER member" : "SINNER member",
       lastMessage: latest?.body ? String(latest.body) : null,
       lastMessageAt: String(latest?.created_at ?? conversation.updated_at ?? conversation.created_at),
+      unreadCount: asRows(latestMessages).filter((message) => String(message.conversation_id) === String(conversation.id) && String(message.sender_id) !== userData.user.id && !message.read_at).length,
     };
   });
 
