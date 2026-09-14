@@ -32,6 +32,8 @@ const sections = {
   "host-requests": { title: "Host Requests", copy: "Approve or reject users who ask to publish spaces as hosts." },
   "host-approvals": { title: "Host Requests", copy: "Approve or reject users who ask to publish spaces as hosts." },
   hosts: { title: "Hosts", copy: "Host accounts, listing volume and current moderation signals." },
+  "listing-reviews": { title: "Listing Reviews", copy: "Approve or reject publications submitted by hosts." },
+  "publication-reviews": { title: "Listing Reviews", copy: "Approve or reject publications submitted by hosts." },
   listings: { title: "Publications", copy: "Spaces, experiences and events that can be reviewed or moderated." },
   bookings: { title: "Bookings", copy: "Reservation requests and booking state across the platform." },
   reports: { title: "Reports", copy: "User-generated moderation reports and review state." },
@@ -80,17 +82,39 @@ function SummaryCard({ label, value, detail }: { label: string; value: string | 
   );
 }
 
-function PublicationStatusForm({ publication }: { publication: AdminPublication }) {
+function PublicationStatusForm({ publication, returnPath }: { publication: AdminPublication; returnPath: string }) {
   return (
-    <form action={updatePublicationStatusAction} className="flex min-w-72 gap-2">
-      <input type="hidden" name="publication_id" value={publication.id} />
-      <input type="hidden" name="kind" value={publication.kind} />
-      <input type="hidden" name="return_path" value="/admin/listings" />
-      <select name="status" defaultValue={publication.status} className="h-10 rounded-lg border hairline bg-black/35 px-3 text-sm text-white outline-none">
-        {publicationStatuses.map((status) => <option key={status} value={status}>{status.replace(/_/g, " ")}</option>)}
-      </select>
-      <button type="submit" className="rounded-lg bg-sinner-gold px-3 text-sm font-semibold text-black transition hover:bg-sinner-goldSoft">Update</button>
-    </form>
+    <div className="grid min-w-72 gap-2">
+      <div className="flex flex-wrap gap-2">
+        {publication.status !== "approved" ? (
+          <form action={updatePublicationStatusAction}>
+            <input type="hidden" name="publication_id" value={publication.id} />
+            <input type="hidden" name="kind" value={publication.kind} />
+            <input type="hidden" name="return_path" value={returnPath} />
+            <input type="hidden" name="status" value="approved" />
+            <button type="submit" className="min-h-10 rounded-lg bg-sinner-gold px-3 text-sm font-semibold text-black transition hover:bg-sinner-goldSoft">Approve</button>
+          </form>
+        ) : null}
+        {publication.status !== "rejected" ? (
+          <form action={updatePublicationStatusAction}>
+            <input type="hidden" name="publication_id" value={publication.id} />
+            <input type="hidden" name="kind" value={publication.kind} />
+            <input type="hidden" name="return_path" value={returnPath} />
+            <input type="hidden" name="status" value="rejected" />
+            <button type="submit" className="min-h-10 rounded-lg border border-rose-300/30 px-3 text-sm font-semibold text-rose-200 transition hover:bg-rose-500/10">Reject</button>
+          </form>
+        ) : null}
+      </div>
+      <form action={updatePublicationStatusAction} className="flex gap-2">
+        <input type="hidden" name="publication_id" value={publication.id} />
+        <input type="hidden" name="kind" value={publication.kind} />
+        <input type="hidden" name="return_path" value={returnPath} />
+        <select name="status" defaultValue={publication.status} className="h-10 rounded-lg border hairline bg-black/35 px-3 text-sm text-white outline-none">
+          {publicationStatuses.map((status) => <option key={status} value={status}>{status.replace(/_/g, " ")}</option>)}
+        </select>
+        <button type="submit" className="rounded-lg border hairline px-3 text-sm font-semibold text-sinner-mist transition hover:text-white">Set</button>
+      </form>
+    </div>
   );
 }
 
@@ -281,6 +305,51 @@ export default async function AdminSectionPage({
     );
   }
 
+  if (key === "listing-reviews" || key === "publication-reviews") {
+    const publications = await getAdminPublications();
+    const pending = publications.filter((publication) => publication.status === "pending_review");
+    const rejected = publications.filter((publication) => publication.status === "rejected").length;
+    const approved = publications.filter((publication) => publication.status === "approved").length;
+
+    return (
+      <AdminShell title={section.title} copy={section.copy}>
+        <StatusMessage error={query.error} success={query.success} />
+        <div className="grid gap-4 sm:grid-cols-3">
+          <SummaryCard label="Pending review" value={pending.length} detail="Publications waiting for admin approval." />
+          <SummaryCard label="Approved" value={approved} detail="Public listings currently eligible for discovery." />
+          <SummaryCard label="Rejected" value={rejected} detail="Publications returned to hosts for correction." />
+        </div>
+
+        <div className="mt-6">
+          <AdminTable>
+            <table className="w-full min-w-[1180px] border-collapse">
+              <thead className="text-left text-xs uppercase text-sinner-mist/70">
+                <tr><th className="px-4 py-3">Publication</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Owner</th><th className="px-4 py-3">Location</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Price</th><th className="px-4 py-3">Review action</th></tr>
+              </thead>
+              <tbody className="divide-y hairline">
+                {pending.map((publication) => (
+                  <tr key={`${publication.kind}-${publication.id}`}>
+                    <Cell>
+                      {publication.href ? <Link href={publication.href} className="font-medium hover:text-sinner-goldSoft">{publication.name}</Link> : <span className="font-medium">{publication.name}</span>}
+                      <p className="mt-1 text-xs text-sinner-mist/60">{publication.detail}</p>
+                    </Cell>
+                    <Cell muted className="capitalize">{publication.kind}</Cell>
+                    <Cell muted>{publication.ownerName}</Cell>
+                    <Cell muted>{publication.city}, {publication.state}</Cell>
+                    <Cell><StatusPill value={publication.status} /></Cell>
+                    <Cell muted>{publication.price === null ? "Quote" : `${formatMoney(publication.price, publication.currency)} ${publication.currency}`}</Cell>
+                    <Cell><PublicationStatusForm publication={publication} returnPath={`/admin/${key}`} /></Cell>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </AdminTable>
+        </div>
+        {!pending.length ? <div className="mt-6"><EmptyPanel title="No pending publications." copy="Submitted host listings will appear here as pending review." /></div> : null}
+      </AdminShell>
+    );
+  }
+
   if (key === "listings") {
     const publications = await getAdminPublications();
     const pending = publications.filter((publication) => publication.status === "pending_review").length;
@@ -313,7 +382,7 @@ export default async function AdminSectionPage({
                     <Cell muted>{publication.city}, {publication.state}</Cell>
                     <Cell><StatusPill value={publication.status} /></Cell>
                     <Cell muted>{publication.price === null ? "Quote" : `${formatMoney(publication.price, publication.currency)} ${publication.currency}`}</Cell>
-                    <Cell><PublicationStatusForm publication={publication} /></Cell>
+                    <Cell><PublicationStatusForm publication={publication} returnPath="/admin/listings" /></Cell>
                   </tr>
                 ))}
               </tbody>

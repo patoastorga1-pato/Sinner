@@ -54,7 +54,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Profiles" value={dashboard.users} detail="Registered adult profiles visible to admin." href="/admin/profiles" />
         <MetricCard label="Hosts" value={dashboard.hosts} detail="Accounts with host permissions." href="/admin/hosts" />
-        <MetricCard label="Approved spaces" value={dashboard.spaces.approved} detail={`${dashboard.spaces.pending_review} waiting for review.`} href="/admin/listings" />
+        <MetricCard label="Listing reviews" value={dashboard.spaces.pending_review} detail="Spaces submitted by hosts and waiting for approval." href="/admin/listing-reviews" />
         <MetricCard label="Active bookings" value={activeBookings} detail="Pending, payment-hold and confirmed reservations." href="/admin/bookings" />
       </div>
 

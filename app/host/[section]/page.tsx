@@ -114,24 +114,30 @@ function HostListingsPanel({ listings, error, success }: { listings: HostListing
               <p className="mt-4 line-clamp-2 text-sm leading-6 text-sinner-mist">{listing.shortDescription || listing.description || "No description yet."}</p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link href={`/host/listings/${listing.id}/edit`} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-sinner-gold/25 px-4 text-sm font-semibold text-sinner-goldSoft transition hover:bg-sinner-gold/10"><Edit3 size={16} />Edit</Link>
-                <form action={updateHostListingStatusAction}>
-                  <input type="hidden" name="listing_id" value={listing.id} />
-                  <input type="hidden" name="return_path" value="/host/listings" />
-                  <button name="intent" value="submit" type="submit" className="min-h-11 rounded-lg border hairline px-4 text-sm text-sinner-mist transition hover:text-white">Submit review</button>
-                </form>
-                {listing.status !== "draft" ? (
+                {listing.status === "draft" || listing.status === "rejected" ? (
+                  <form action={updateHostListingStatusAction}>
+                    <input type="hidden" name="listing_id" value={listing.id} />
+                    <input type="hidden" name="return_path" value="/host/listings" />
+                    <button name="intent" value="submit" type="submit" className="min-h-11 rounded-lg border hairline px-4 text-sm text-sinner-mist transition hover:text-white">Submit review</button>
+                  </form>
+                ) : null}
+                {listing.status === "pending_review" || listing.status === "rejected" ? (
                   <form action={updateHostListingStatusAction}>
                     <input type="hidden" name="listing_id" value={listing.id} />
                     <input type="hidden" name="return_path" value="/host/listings" />
                     <button name="intent" value="draft" type="submit" className="min-h-11 rounded-lg border hairline px-4 text-sm text-sinner-mist transition hover:text-white">Move to draft</button>
                   </form>
-                ) : (
+                ) : null}
+                {listing.status === "draft" ? (
                   <form action={updateHostListingStatusAction}>
                     <input type="hidden" name="listing_id" value={listing.id} />
                     <input type="hidden" name="return_path" value="/host/listings" />
                     <button name="intent" value="delete" type="submit" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-rose-300/25 px-4 text-sm text-rose-200 transition hover:bg-rose-500/10"><Trash2 size={16} />Delete draft</button>
                   </form>
-                )}
+                ) : null}
+                {listing.status === "pending_review" ? <span className="inline-flex min-h-11 items-center rounded-lg border border-amber-300/20 px-4 text-sm text-amber-100">Waiting for admin review</span> : null}
+                {listing.status === "approved" ? <span className="inline-flex min-h-11 items-center rounded-lg border border-emerald-300/20 px-4 text-sm text-emerald-200">Public after approval</span> : null}
+                {listing.status === "suspended" ? <span className="inline-flex min-h-11 items-center rounded-lg border border-rose-300/20 px-4 text-sm text-rose-200">Contact admin</span> : null}
               </div>
             </div>
           </article>

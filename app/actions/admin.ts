@@ -139,6 +139,7 @@ export async function updateSpaceStatusAction(formData: FormData) {
   if (error) redirect(withMessage(returnPath, "error", error.message));
 
   revalidatePath("/admin");
+  revalidatePath("/admin/listing-reviews");
   revalidatePath("/admin/listings");
   revalidatePath("/spaces");
   redirect(withMessage(returnPath, "success", "Listing status updated."));
@@ -168,6 +169,7 @@ export async function updatePublicationStatusAction(formData: FormData) {
   }
 
   revalidatePath("/admin");
+  revalidatePath("/admin/listing-reviews");
   revalidatePath("/admin/listings");
   revalidatePath("/spaces");
   revalidatePath("/experiences");
