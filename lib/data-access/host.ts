@@ -59,7 +59,9 @@ export type HostListing = {
   stateCode: string | null;
   municipality: string | null;
   locality: string | null;
+  postalCode: string | null;
   approximateLocation: string | null;
+  exactAddress: string | null;
   timezone: string;
   maxGuests: number;
   hourlyPrice: number | null;
@@ -98,7 +100,7 @@ export type HostEarningSummary = {
 
 const listingSelect = `
   id,name,slug,short_description,description,space_type,status,city,state,country,country_code,state_code,
-  municipality,locality,approximate_location,timezone,max_guests,hourly_price,overnight_price,full_day_price,
+  municipality,locality,postal_code,approximate_location,exact_address,timezone,max_guests,hourly_price,overnight_price,full_day_price,
   cleaning_fee,minimum_hours,privacy_score,instant_booking,creator_friendly,group_friendly,events_allowed,
   featured,rating_average,review_count,cancellation_policy,check_in_notes,minimum_booking_notice_minutes,
   buffer_minutes,house_rules,created_at,updated_at,published_at,
@@ -129,7 +131,9 @@ function mapListing(row: UnknownRow): HostListing {
     stateCode: row.state_code ? String(row.state_code) : null,
     municipality: row.municipality ? String(row.municipality) : null,
     locality: row.locality ? String(row.locality) : null,
+    postalCode: row.postal_code ? String(row.postal_code) : null,
     approximateLocation: row.approximate_location ? String(row.approximate_location) : null,
+    exactAddress: row.exact_address ? String(row.exact_address) : null,
     timezone: String(row.timezone ?? "America/Mexico_City"),
     maxGuests: asNumber(row.max_guests, 1),
     hourlyPrice: asNullableNumber(row.hourly_price),
