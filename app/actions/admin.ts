@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { safeRedirectPath, withMessage } from "@/lib/auth/redirect";
 import { requireRole } from "@/lib/auth/server";
 import { createClient } from "@/lib/supabase/server";
-import type { ListingStatus, ReportStatus, SpaceStatus, SupportTicketStatus } from "@/lib/types/database";
+import type { ListingStatus, ReportStatus, SpaceStatus, SupportTicketStatus, VerificationStatus } from "@/lib/types/database";
 
 function value(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
@@ -72,6 +72,59 @@ function reportStatus(value: string): ReportStatus {
 
 function supportStatus(value: string): SupportTicketStatus {
   return ["open", "in_progress", "resolved", "closed"].includes(value) ? (value as SupportTicketStatus) : "in_progress";
+}
+
+function verificationStatus(value: string): VerificationStatus {
+  return ["unverified", "pending", "verified", "rejected"].includes(value) ? (value as VerificationStatus) : "pending";
+}
+
+export async function updateProfileVerificationAction(formData: FormData) {
+  const returnPath = safeRedirectPath(value(formData, "return_path"), "/admin/profiles");
+  const profileId = value(formData, "profile_id");
+  const nextStatus = verificationStatus(value(formData, "age_status"));
+  const rejectionReason = value(formData, "rejection_reason").trim() || null;
+  const supabase = await requireAdminSupabase(returnPath);
+
+  if (!profileId) {
+    redirect(withMessage(returnPath, "error", "Profile id is required."));
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("gender,age_verification_document_path")
+    .eq("id", profileId)
+    .maybeSingle();
+
+  if (profileError) redirect(withMessage(returnPath, "error", profileError.message));
+  if (!profile) redirect(withMessage(returnPath, "error", "Profile not found."));
+
+  if (nextStatus === "verified" && !profile.age_verification_document_path) {
+    redirect(withMessage(returnPath, "error", "This profile needs an uploaded ID before it can be verified."));
+  }
+
+  if (nextStatus === "verified" && profile.gender !== "male" && profile.gender !== "female") {
+    redirect(withMessage(returnPath, "error", "This profile needs hombre/mujer identity before it can be verified."));
+  }
+
+  const reviewed = nextStatus === "verified" || nextStatus === "rejected";
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      age_verification_status: nextStatus,
+      age_verification_reviewed_at: reviewed ? new Date().toISOString() : null,
+      age_verification_rejection_reason: nextStatus === "rejected" ? rejectionReason : null,
+      identity_verification_status: profile.gender === "male" || profile.gender === "female" ? "verified" : "unverified",
+    })
+    .eq("id", profileId);
+
+  if (error) redirect(withMessage(returnPath, "error", error.message));
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/profiles");
+  revalidatePath("/admin/users");
+  revalidatePath("/profile");
+  revalidatePath("/settings");
+  redirect(withMessage(returnPath, "success", "Profile verification updated."));
 }
 
 export async function updateSpaceStatusAction(formData: FormData) {

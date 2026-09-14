@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MessageCircle, Settings, ShieldAlert } from "lucide-react";
-import { updatePublicationStatusAction, updateReportStatusAction, updateSupportTicketAction } from "@/app/actions/admin";
+import { updateProfileVerificationAction, updatePublicationStatusAction, updateReportStatusAction, updateSupportTicketAction } from "@/app/actions/admin";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { requireRole } from "@/lib/auth/server";
@@ -17,6 +17,7 @@ import {
   getAdminSettings,
   getAdminSupportTickets,
   getAdminUsers,
+  type AdminUser,
   type AdminPublication,
 } from "@/lib/data-access/admin";
 import { formatMoney } from "@/lib/marketplace/pricing";
@@ -87,6 +88,24 @@ function PublicationStatusForm({ publication }: { publication: AdminPublication 
   );
 }
 
+function ProfileVerificationForm({ user, returnPath }: { user: AdminUser; returnPath: string }) {
+  return (
+    <form action={updateProfileVerificationAction} className="grid min-w-72 gap-2">
+      <input type="hidden" name="profile_id" value={user.id} />
+      <input type="hidden" name="return_path" value={returnPath} />
+      <select name="age_status" defaultValue={user.ageStatus} className="h-10 rounded-lg border hairline bg-black/35 px-3 text-sm text-white outline-none">
+        {["pending", "verified", "rejected", "unverified"].map((status) => <option key={status} value={status}>{status.replace(/_/g, " ")}</option>)}
+      </select>
+      <input
+        name="rejection_reason"
+        placeholder="Rejection note"
+        className="h-10 rounded-lg border hairline bg-black/35 px-3 text-sm text-white outline-none placeholder:text-sinner-mist/45"
+      />
+      <button type="submit" className="h-10 rounded-lg bg-sinner-gold px-3 text-sm font-semibold text-black transition hover:bg-sinner-goldSoft">Save verification</button>
+    </form>
+  );
+}
+
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString();
 }
@@ -113,19 +132,21 @@ export default async function AdminSectionPage({
     const users = await getAdminUsers();
     const visible = key === "hosts" ? users.filter((user) => user.roles.includes("host")) : users;
     const verifiedAdults = visible.filter((user) => user.ageStatus === "verified").length;
+    const pendingAgeReviews = visible.filter((user) => user.ageStatus === "pending" && user.ageDocumentPath).length;
     const admins = visible.filter((user) => user.roles.includes("admin")).length;
 
     return (
       <AdminShell title={section.title} copy={section.copy}>
         <StatusMessage error={query.error} success={query.success} />
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-4">
           <SummaryCard label="Visible profiles" value={visible.length} detail="Loaded from Supabase profiles." />
           <SummaryCard label="Verified adults" value={verifiedAdults} detail="Profiles marked age verified." />
+          <SummaryCard label="Pending reviews" value={pendingAgeReviews} detail="Uploaded IDs waiting for admin verification." />
           <SummaryCard label="Admins" value={admins} detail="Profiles with admin role." />
         </div>
         <div className="mt-6">
           <AdminTable>
-            <table className="w-full min-w-[1240px] border-collapse">
+            <table className="w-full min-w-[1520px] border-collapse">
               <thead className="text-left text-xs uppercase text-sinner-mist/70">
                 <tr>
                   <th className="px-4 py-3">Name</th>
@@ -137,6 +158,7 @@ export default async function AdminSectionPage({
                   <th className="px-4 py-3">Bookings</th>
                   <th className="px-4 py-3">Flags</th>
                   <th className="px-4 py-3">Created</th>
+                  <th className="px-4 py-3">Verification action</th>
                 </tr>
               </thead>
               <tbody className="divide-y hairline">
@@ -158,6 +180,7 @@ export default async function AdminSectionPage({
                     <Cell muted>{user.bookingCount}</Cell>
                     <Cell muted>{user.openReports} reports · {user.openSupportTickets} support · {user.reviewCount} reviews</Cell>
                     <Cell muted>{formatDate(user.created_at)}</Cell>
+                    <Cell><ProfileVerificationForm user={user} returnPath={`/admin/${key}`} /></Cell>
                   </tr>
                 ))}
               </tbody>
