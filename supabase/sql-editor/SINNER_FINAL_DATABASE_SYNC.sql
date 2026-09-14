@@ -47,6 +47,7 @@ $$;
 create or replace function private.set_space_location_search()
 returns trigger
 language plpgsql
+security definer
 set search_path = ''
 as $$
 begin

@@ -905,6 +905,7 @@ revoke all on function private.normalize_mexico_location(text) from public;
 create or replace function private.set_space_location_search()
 returns trigger
 language plpgsql
+security definer
 set search_path = ''
 as $$
 begin
