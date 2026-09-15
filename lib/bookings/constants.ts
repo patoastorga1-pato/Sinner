@@ -21,7 +21,7 @@ export const blockingBookingStatuses: AppBookingStatus[] = ["payment_pending", "
 export const bookingStatusLabels: Record<AppBookingStatus, string> = {
   draft: "Draft",
   pending: "Pending request",
-  payment_pending: "Payment pending",
+  payment_pending: "Pending confirmation",
   confirmed: "Confirmed",
   completed: "Completed",
   declined: "Declined",
@@ -32,8 +32,8 @@ export const bookingStatusLabels: Record<AppBookingStatus, string> = {
 };
 
 export const allowedBookingTransitions: Record<AppBookingStatus, AppBookingStatus[]> = {
-  draft: ["pending", "payment_pending"],
-  pending: ["payment_pending", "declined", "cancelled"],
+  draft: ["pending", "payment_pending", "confirmed"],
+  pending: ["payment_pending", "confirmed", "declined", "cancelled"],
   payment_pending: ["confirmed", "expired", "cancelled"],
   confirmed: ["completed", "cancelled", "refunded", "disputed"],
   completed: [],
@@ -58,7 +58,7 @@ export function canTransitionBooking(from: AppBookingStatus, to: AppBookingStatu
 }
 
 export function canGuestCancel(status: AppBookingStatus) {
-  return status === "pending" || status === "payment_pending";
+  return status === "pending" || status === "payment_pending" || status === "confirmed";
 }
 
 export function canHostApprove(status: AppBookingStatus) {
