@@ -28,7 +28,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
         {tabs.map((tab) => <Link key={tab.key} href={`/bookings?tab=${tab.key}`} className={`min-w-fit rounded-lg px-4 py-2 text-sm ${selected.key === tab.key ? "bg-sinner-gold text-black" : "border hairline text-sinner-mist hover:text-white"}`}>{tab.label}</Link>)}
       </nav>
       <div className="mt-7 grid gap-5">
-        {visible.length ? visible.map((booking) => <BookingCard key={booking.id} booking={booking} />) : <EmptyState icon={CalendarDays} title="No bookings in this tab." copy={bookings.length ? "Try another status tab to see the rest of your reservations." : "Your next request or temporary hold will appear here."} actionLabel="Explore spaces" actionHref="/spaces" />}
+        {visible.length ? visible.map((booking) => <BookingCard key={booking.id} booking={booking} />) : <EmptyState icon={CalendarDays} title="No bookings in this tab." copy={bookings.length ? "Try another status tab to see the rest of your reservations." : "Your next request or demo reservation will appear here."} actionLabel="Explore spaces" actionHref="/spaces" />}
       </div>
     </AccountShell>
   );

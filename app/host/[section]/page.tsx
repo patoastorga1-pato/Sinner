@@ -232,7 +232,7 @@ function HostEarningsPanel({ earnings }: { earnings: Awaited<ReturnType<typeof g
 function HostBookingDashboard({ bookings, error, success }: { bookings: Awaited<ReturnType<typeof getHostBookings>>; error?: string; success?: string }) {
   const tabs: Array<{ key: string; label: string; statuses: AppBookingStatus[] }> = [
     { key: "requests", label: "Requests", statuses: ["pending"] },
-    { key: "payment", label: "Payment Pending", statuses: ["payment_pending"] },
+    { key: "payment", label: "Pending Confirmation", statuses: ["payment_pending"] },
     { key: "upcoming", label: "Upcoming", statuses: ["confirmed"] },
     { key: "completed", label: "Completed", statuses: ["completed"] },
     { key: "cancelled", label: "Cancelled", statuses: ["cancelled", "declined", "expired", "refunded"] },
@@ -280,7 +280,7 @@ function HostBookingDashboard({ bookings, error, success }: { bookings: Awaited<
             </section>
           );
         })}
-        {!bookings.length ? <EmptyState icon={NotebookTabs} title="No booking requests yet." copy="Requests and temporary holds for your spaces will appear here." /> : null}
+        {!bookings.length ? <EmptyState icon={NotebookTabs} title="No booking requests yet." copy="Requests and demo reservations for your spaces will appear here." /> : null}
       </div>
     </>
   );
@@ -312,7 +312,7 @@ function HostCalendarPrep({ bookings, blocks }: { bookings: Awaited<ReturnType<t
           </div>
           <p className="mt-3 text-sm text-sinner-mist">{booking.bookingReference} · {booking.durationHours} hours · includes configured cleaning buffer in conflict checks.</p>
         </article>
-      )) : <EmptyState icon={CalendarDays} title="No active calendar items." copy="Pending requests, payment holds and confirmed reservations will be visible here." />}
+      )) : <EmptyState icon={CalendarDays} title="No active calendar items." copy="Pending requests and confirmed demo reservations will be visible here." />}
       </div>
       </section>
     </div>

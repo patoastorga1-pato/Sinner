@@ -49,7 +49,7 @@ export default async function BookSpacePage({
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase text-sinner-goldSoft">Booking review</p>
             <h1 className="mt-3 font-display text-5xl font-medium text-sinner-ivory sm:text-6xl">{space.instantBooking ? "Reserve this space" : "Request this space"}</h1>
-            <p className="mt-4 max-w-2xl leading-7 text-sinner-mist">{space.instantBooking ? "A temporary payment hold will be created. This is not a confirmed booking until payment exists in a future phase." : "The host will review your request before a temporary payment hold can be created."}</p>
+            <p className="mt-4 max-w-2xl leading-7 text-sinner-mist">{space.instantBooking ? "Demo mode is active. This creates a confirmed test reservation without charging a card or contacting a payment provider." : "Demo mode is active. The host can review your request and approve it without any real payment."}</p>
 
             <div className="mt-9 overflow-hidden rounded-xl border hairline bg-white/[0.025]">
               <div className="relative aspect-[16/9] min-h-60">
@@ -97,9 +97,9 @@ export default async function BookSpacePage({
 
               <div className={`mt-6 rounded-lg border p-4 text-sm ${availability.available ? "border-emerald-300/25 bg-emerald-500/5 text-emerald-200" : "border-rose-300/25 bg-rose-500/5 text-rose-200"}`}>{availability.message}</div>
               <label className="mt-5 block text-sm text-sinner-mist"><span className="mb-2 block">Message to host</span><textarea name="guest_message" rows={4} maxLength={1000} className="w-full rounded-lg border hairline bg-black/30 px-3 py-3 text-sinner-ivory outline-none placeholder:text-sinner-mist/60" placeholder="Share arrival context or any relevant request." /></label>
-              <label className="mt-5 flex gap-3 text-sm leading-6 text-sinner-mist"><input required type="checkbox" name="rules_accepted" className="mt-1 h-4 w-4 accent-sinner-gold" /><span>I agree to the space rules and understand exact address details remain protected until a future confirmed-booking flow.</span></label>
-              <SubmitButton className="mt-6 w-full">{bookingType === "instant" ? "Create temporary hold" : "Request to book"}</SubmitButton>
-              <p className="mt-4 text-center text-xs leading-5 text-sinner-mist/70">No payment is processed and unpaid reservations are not confirmed in Phase 3.</p>
+              <label className="mt-5 flex gap-3 text-sm leading-6 text-sinner-mist"><input required type="checkbox" name="rules_accepted" className="mt-1 h-4 w-4 accent-sinner-gold" /><span>I agree to the space rules and understand this is a demo reservation with no real payment processed.</span></label>
+              <SubmitButton className="mt-6 w-full">{bookingType === "instant" ? "Create demo reservation" : "Request to book"}</SubmitButton>
+              <p className="mt-4 text-center text-xs leading-5 text-sinner-mist/70">Demo mode: no card is charged and no payment provider is contacted.</p>
             </form>
           </aside>
         </div>

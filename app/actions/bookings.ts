@@ -49,8 +49,8 @@ export async function createBookingAction(formData: FormData) {
   revalidatePath("/bookings");
   revalidatePath("/host/bookings");
   const success = row.status === "pending"
-    ? "Request sent. Your host will review it."
-    : "Reservation temporarily held. Payment will be required to confirm it.";
+    ? "Demo request sent. Your host will review it. No payment was processed."
+    : "Demo reservation confirmed. No payment was processed.";
   redirect(withMessage(`/bookings/${row.id}`, "success", success));
 }
 
@@ -63,7 +63,7 @@ export async function approveBookingAction(formData: FormData) {
   const row = Array.isArray(data) ? data[0] : data;
   revalidatePath("/host/bookings");
   revalidatePath("/bookings");
-  redirect(withMessage(returnPath, "success", row?.booking_reference ? `Approved ${row.booking_reference}. A temporary hold was created.` : "Booking request approved."));
+  redirect(withMessage(returnPath, "success", row?.booking_reference ? `Approved ${row.booking_reference}. Demo reservation confirmed without payment.` : "Booking request approved in demo mode."));
 }
 
 export async function declineBookingAction(formData: FormData) {

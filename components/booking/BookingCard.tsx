@@ -31,13 +31,13 @@ export function BookingCard({ booking }: { booking: BookingCardData }) {
           <span className="flex items-center gap-2"><Users size={16} />{booking.guestCount} guests</span>
           <span className="font-semibold text-sinner-ivory">{formatMoney(booking.totalAmount, booking.currency)} {booking.currency}</span>
         </div>
-        {booking.status === "payment_pending" && remaining !== null ? <p className="mt-4 text-sm text-sinner-goldSoft">Temporary hold expires in {remaining} min.</p> : null}
+        {booking.status === "payment_pending" && remaining !== null ? <p className="mt-4 text-sm text-sinner-goldSoft">Pending confirmation expires in {remaining} min.</p> : null}
         <div className="mt-5 flex flex-wrap gap-3">
           <Link href={`/bookings/${booking.id}`} className="flex min-h-11 items-center rounded-lg border border-sinner-gold/25 px-4 text-sm font-semibold text-sinner-goldSoft hover:bg-sinner-gold/10">View booking</Link>
           <Link href="/messages" className="flex min-h-11 items-center gap-2 rounded-lg border hairline px-4 text-sm text-sinner-mist hover:text-white"><MessageCircle size={16} />Message host</Link>
           {booking.status === "completed" ? <Link href={`/bookings/${booking.id}#review`} className="flex min-h-11 items-center rounded-lg border hairline px-4 text-sm text-sinner-mist hover:text-white">Leave a review</Link> : null}
         </div>
-        {canGuestCancel(booking.status) ? <div className="mt-4"><CancelBookingForm bookingId={booking.id} returnPath="/bookings" label={booking.status === "pending" ? "Cancel request" : "Cancel hold"} /></div> : null}
+        {canGuestCancel(booking.status) ? <div className="mt-4"><CancelBookingForm bookingId={booking.id} returnPath="/bookings" label={booking.status === "pending" ? "Cancel request" : "Cancel reservation"} /></div> : null}
       </div>
     </article>
   );

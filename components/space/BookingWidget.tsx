@@ -70,7 +70,7 @@ export function BookingWidget({ space, authenticated, initialSelection }: { spac
 
         {availability ? <p aria-live="polite" className={`mt-4 flex items-start gap-2 text-sm ${availability.available ? "text-emerald-300" : "text-rose-300"}`}>{availability.available ? <CheckCircle2 size={17} className="mt-0.5 shrink-0" /> : null}{availability.message}</p> : null}
         <button type="submit" disabled={pending || !estimate} className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-sinner-gold px-6 py-3 font-semibold text-sinner-black transition hover:bg-sinner-goldSoft disabled:cursor-not-allowed disabled:opacity-55">{pending ? <LoaderCircle size={18} className="animate-spin" /> : null}{pending ? "Checking..." : "Continue"}</button>
-        <p className="mt-4 text-center text-xs leading-5 text-sinner-mist/75">{space.instantBooking ? "Creates a temporary hold. Payment confirmation arrives in a future phase." : "Request to book. The host reviews before any hold is created."}</p>
+        <p className="mt-4 text-center text-xs leading-5 text-sinner-mist/75">{space.instantBooking ? "Demo mode: creates a test reservation without charging a card." : "Demo mode: the host reviews the request before confirming it."}</p>
       </form>
     </aside>
   );

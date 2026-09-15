@@ -47,7 +47,7 @@ export function CancelBookingForm({ bookingId, returnPath, label = "Cancel" }: {
     <form
       action={cancelBookingAction}
       onSubmit={(event) => {
-        if (!window.confirm("Cancel this request or temporary hold?")) event.preventDefault();
+        if (!window.confirm("Cancel this request or reservation?")) event.preventDefault();
       }}
       className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]"
     >

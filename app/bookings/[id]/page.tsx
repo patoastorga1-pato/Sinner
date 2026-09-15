@@ -53,8 +53,9 @@ export default async function BookingDetailPage({
             {[{ icon: CalendarDays, label: "Date", value: formatBookingDate(booking.startDatetime, booking.timezone) }, { icon: Clock, label: "Time", value: `${formatBookingTime(booking.startDatetime, booking.timezone)}-${formatBookingTime(booking.endDatetime, booking.timezone)} · ${booking.timezone}` }, { icon: Users, label: "Guests", value: String(booking.guestCount) }, { icon: ShieldCheck, label: "Duration", value: `${booking.durationHours} hours` }].map((item) => { const Icon = item.icon; return <div key={item.label} className="flex gap-3 border-b hairline py-5"><Icon size={18} className="mt-0.5 shrink-0 text-sinner-goldSoft" /><div><p className="text-xs uppercase text-sinner-mist/60">{item.label}</p><p className="mt-1 text-sm text-sinner-ivory">{item.value}</p></div></div>; })}
           </section>
 
-          {booking.status === "payment_pending" ? <div className="mt-8 rounded-xl border border-sinner-gold/25 bg-sinner-gold/5 p-5 text-sm leading-6 text-sinner-goldSoft">Reservation temporarily held. Payment will be required to confirm this reservation{holdMinutes !== null ? ` within ${holdMinutes} min` : ""}.</div> : null}
-          {booking.status === "pending" ? <div className="mt-8 rounded-xl border border-amber-300/25 bg-amber-400/5 p-5 text-sm leading-6 text-amber-100">Request sent. Your host will review your request.</div> : null}
+          {booking.status === "payment_pending" ? <div className="mt-8 rounded-xl border border-sinner-gold/25 bg-sinner-gold/5 p-5 text-sm leading-6 text-sinner-goldSoft">Reservation pending confirmation{holdMinutes !== null ? ` for ${holdMinutes} min` : ""}. Demo mode does not charge cards.</div> : null}
+          {booking.status === "pending" ? <div className="mt-8 rounded-xl border border-amber-300/25 bg-amber-400/5 p-5 text-sm leading-6 text-amber-100">Request sent. Your host will review your request. No payment was processed.</div> : null}
+          {booking.status === "confirmed" ? <div className="mt-8 rounded-xl border border-emerald-300/25 bg-emerald-500/5 p-5 text-sm leading-6 text-emerald-100">Demo reservation confirmed. No real payment was processed.</div> : null}
 
           <section className="mt-10 border-t hairline pt-8">
             <h2 className="font-display text-4xl text-sinner-ivory">Audit history</h2>
@@ -116,9 +117,9 @@ export default async function BookingDetailPage({
           </div>
           <div className="mt-7 border-t hairline pt-6">
             <div className="flex gap-3 text-sm text-sinner-mist"><UserRound size={18} className="shrink-0 text-sinner-goldSoft" /><span>{booking.space.hostName}</span></div>
-            <p className="mt-4 text-xs leading-5 text-sinner-mist/70">Exact address is still protected in Phase 3 and is not exposed for pending or payment-pending bookings.</p>
+            <p className="mt-4 text-xs leading-5 text-sinner-mist/70">Exact address remains protected during this demo booking flow.</p>
           </div>
-          {canGuestCancel(booking.status) ? <div className="mt-6 border-t hairline pt-6"><CancelBookingForm bookingId={booking.id} returnPath={`/bookings/${booking.id}`} label={booking.status === "pending" ? "Cancel request" : "Cancel temporary hold"} /></div> : null}
+          {canGuestCancel(booking.status) ? <div className="mt-6 border-t hairline pt-6"><CancelBookingForm bookingId={booking.id} returnPath={`/bookings/${booking.id}`} label={booking.status === "pending" ? "Cancel request" : "Cancel reservation"} /></div> : null}
         </aside>
       </div>
     </AccountShell>
