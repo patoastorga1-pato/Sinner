@@ -100,7 +100,7 @@ export type HostEarningSummary = {
 
 const listingSelect = `
   id,name,slug,short_description,description,space_type,status,city,state,country,country_code,state_code,
-  municipality,locality,postal_code,approximate_location,exact_address,timezone,max_guests,hourly_price,overnight_price,full_day_price,
+  municipality,locality,approximate_location,timezone,max_guests,hourly_price,overnight_price,full_day_price,
   cleaning_fee,minimum_hours,privacy_score,instant_booking,creator_friendly,group_friendly,events_allowed,
   featured,rating_average,review_count,cancellation_policy,check_in_notes,minimum_booking_notice_minutes,
   buffer_minutes,house_rules,created_at,updated_at,published_at,
@@ -191,7 +191,17 @@ export async function getHostListing(id: string): Promise<HostListing | null> {
     .eq("host_id", userData.user.id)
     .maybeSingle();
 
-  return data ? mapListing(data as UnknownRow) : null;
+  if (!data) return null;
+
+  const listing = mapListing(data as UnknownRow);
+  const { data: privateLocation } = await supabase.rpc("get_host_space_private_location", { p_space_id: id });
+  const privateRow = asObject(privateLocation);
+
+  return {
+    ...listing,
+    postalCode: privateRow?.postal_code ? String(privateRow.postal_code) : listing.postalCode,
+    exactAddress: privateRow?.exact_address ? String(privateRow.exact_address) : listing.exactAddress,
+  };
 }
 
 export async function getHostListingCatalog() {

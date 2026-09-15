@@ -153,53 +153,18 @@ function validateListingForReview(payload: SpaceWrite, formData: FormData, retur
   }
 }
 
-type ListingReviewRow = {
-  status: SpaceStatus;
-  name: string | null;
-  short_description: string | null;
-  description: string | null;
-  country: string | null;
-  country_code: string | null;
-  state: string | null;
-  state_code: string | null;
-  municipality: string | null;
-  city: string | null;
-  locality: string | null;
-  postal_code: string | null;
-  approximate_location: string | null;
-  exact_address: string | null;
-  hourly_price: number | string | null;
-  overnight_price: number | string | null;
-  full_day_price: number | string | null;
-};
-
-function hasText(value: string | null | undefined) {
-  return Boolean(value?.trim());
-}
-
-function hasPositivePrice(value: number | string | null) {
-  const result = Number(value);
-  return Number.isFinite(result) && result > 0;
-}
-
-function missingReviewFieldsFromRow(listing: ListingReviewRow) {
-  const missing: string[] = [];
-
-  if (!hasText(listing.name)) missing.push("name");
-  if (!hasText(listing.description) && !hasText(listing.short_description)) missing.push("description");
-  if (!hasText(listing.country)) missing.push("country");
-  if (!hasText(listing.country_code)) missing.push("country code");
-  if (!hasText(listing.state)) missing.push("state");
-  if (!hasText(listing.state_code)) missing.push("state code");
-  if (!hasText(listing.municipality)) missing.push("municipality");
-  if (!hasText(listing.city)) missing.push("city");
-  if (!hasText(listing.locality)) missing.push("locality / neighborhood");
-  if (!hasText(listing.postal_code)) missing.push("postal code");
-  if (!hasText(listing.approximate_location)) missing.push("public location");
-  if (!hasText(listing.exact_address)) missing.push("exact address");
-  if (![listing.hourly_price, listing.overnight_price, listing.full_day_price].some(hasPositivePrice)) missing.push("at least one price");
-
-  return missing;
+function hostListingReviewError(error?: string) {
+  if (!error) return "Unable to submit listing for review.";
+  if (error.startsWith("missing_review_fields:")) {
+    return `Before submitting for review, complete: ${error.replace("missing_review_fields:", "").trim()}.`;
+  }
+  if (error === "authentication_required") return "Sign in to continue.";
+  if (error === "host_access_required") return "Host approval is required before submitting listings.";
+  if (error === "space_not_found") return "Listing not found.";
+  if (error === "listing_already_pending_review") return "Listing is already pending admin review.";
+  if (error === "approved_listing_must_be_edited") return "Approved listings must be edited before submitting changes for review.";
+  if (error === "suspended_listing_requires_admin") return "Suspended listings require admin support.";
+  return error;
 }
 
 function getSelectedIds(formData: FormData, key: string) {
@@ -337,7 +302,7 @@ export async function updateHostListingStatusAction(formData: FormData) {
 
   const { data: listing, error: listingError } = await supabase
     .from("spaces")
-    .select("status,name,short_description,description,country,country_code,state,state_code,municipality,city,locality,postal_code,approximate_location,exact_address,hourly_price,overnight_price,full_day_price")
+    .select("status")
     .eq("id", listingId)
     .eq("host_id", userId)
     .maybeSingle();
@@ -345,7 +310,7 @@ export async function updateHostListingStatusAction(formData: FormData) {
   if (listingError) redirect(withMessage(returnPath, "error", listingError.message));
   if (!listing) redirect(withMessage(returnPath, "error", "Listing not found."));
 
-  const current = listing as ListingReviewRow;
+  const current = listing as { status: SpaceStatus };
 
   if (intent === "delete") {
     if (current.status !== "draft") {
@@ -359,22 +324,13 @@ export async function updateHostListingStatusAction(formData: FormData) {
   }
 
   if (intent === "submit") {
-    if (current.status === "pending_review") {
-      redirect(withMessage(returnPath, "success", "Listing is already pending admin review."));
-    }
+    const { error } = await supabase.rpc("submit_host_space_for_review", { p_space_id: listingId });
+    if (error) redirect(withMessage(returnPath, "error", hostListingReviewError(error.message)));
 
-    if (current.status === "approved") {
-      redirect(withMessage(returnPath, "error", "Approved listings must be edited before submitting changes for review."));
-    }
-
-    if (current.status === "suspended") {
-      redirect(withMessage(returnPath, "error", "Suspended listings require admin support."));
-    }
-
-    const missing = missingReviewFieldsFromRow(current);
-    if (missing.length) {
-      redirect(withMessage(returnPath, "error", `Before submitting for review, complete: ${missing.join(", ")}.`));
-    }
+    revalidatePath("/host/listings");
+    revalidatePath("/admin/listing-reviews");
+    revalidatePath("/admin/listings");
+    redirect(withMessage(returnPath, "success", "Listing submitted for review."));
   }
 
   if (intent === "draft" && (current.status === "approved" || current.status === "suspended")) {
@@ -388,5 +344,5 @@ export async function updateHostListingStatusAction(formData: FormData) {
   revalidatePath("/host/listings");
   revalidatePath("/admin/listing-reviews");
   revalidatePath("/admin/listings");
-  redirect(withMessage(returnPath, "success", nextStatus === "pending_review" ? "Listing submitted for review." : "Listing moved to draft."));
+  redirect(withMessage(returnPath, "success", "Listing moved to draft."));
 }

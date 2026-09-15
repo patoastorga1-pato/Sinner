@@ -442,21 +442,27 @@ export async function getAdminSpaces(): Promise<AdminSpace[]> {
   const supabase = await createClient();
   if (!supabase) return [];
 
-  const { data } = await supabase
-    .from("spaces")
-    .select(`
-      id,host_id,name,slug,status,space_type,city,state,country,locality,municipality,
-      approximate_location,exact_address,max_guests,hourly_price,overnight_price,full_day_price,
-      cleaning_fee,minimum_hours,privacy_score,instant_booking,creator_friendly,group_friendly,
-      events_allowed,featured,rating_average,review_count,created_at,updated_at,published_at
-    `)
-    .order("created_at", { ascending: false })
-    .limit(150);
+  const privateResult = await supabase.rpc("admin_list_spaces_for_review", { p_limit: 150 });
+  let rows = asRows(privateResult.data);
 
-  const hostIds = Array.from(new Set(asRows(data).map((row) => String(row.host_id ?? "")).filter(Boolean)));
+  if (privateResult.error) {
+    const { data } = await supabase
+      .from("spaces")
+      .select(`
+        id,host_id,name,slug,status,space_type,city,state,country,locality,municipality,
+        approximate_location,max_guests,hourly_price,overnight_price,full_day_price,
+        cleaning_fee,minimum_hours,privacy_score,instant_booking,creator_friendly,group_friendly,
+        events_allowed,featured,rating_average,review_count,created_at,updated_at,published_at
+      `)
+      .order("created_at", { ascending: false })
+      .limit(150);
+    rows = asRows(data);
+  }
+
+  const hostIds = Array.from(new Set(rows.map((row) => String(row.host_id ?? "")).filter(Boolean)));
   const hostsById = await getProfileNames(hostIds);
 
-  return asRows(data).map((row) => {
+  return rows.map((row) => {
     const hostId = row.host_id ? String(row.host_id) : null;
     return {
       id: String(row.id),
