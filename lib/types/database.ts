@@ -48,6 +48,27 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface UserPreferenceRecord {
+  user_id: string;
+  language: "es-MX" | "en";
+  currency: "MXN";
+  timezone: string | null;
+  email_reservations: boolean;
+  email_messages: boolean;
+  email_verification: boolean;
+  email_payments: boolean;
+  email_security: boolean;
+  in_app_reservations: boolean;
+  in_app_messages: boolean;
+  in_app_verification: boolean;
+  in_app_payments: boolean;
+  in_app_security: boolean;
+  discreet_notifications: boolean;
+  use_display_name: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface NotificationRecord {
   id: string;
   user_id: string;

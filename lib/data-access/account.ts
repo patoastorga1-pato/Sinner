@@ -1,11 +1,29 @@
 import { createClient } from "@/lib/supabase/server";
-import type { HostApplicationRecord, NotificationRecord, PaymentRecord, Profile } from "@/lib/types/database";
+import type { HostApplicationRecord, NotificationRecord, PaymentRecord, Profile, UserPreferenceRecord } from "@/lib/types/database";
 
 type UnknownRow = Record<string, unknown>;
 
 function asRows(value: unknown): UnknownRow[] {
   return Array.isArray(value) ? (value as UnknownRow[]) : [];
 }
+
+export const defaultUserPreferences: Omit<UserPreferenceRecord, "user_id" | "created_at" | "updated_at"> = {
+  language: "en",
+  currency: "MXN",
+  timezone: null,
+  email_reservations: true,
+  email_messages: true,
+  email_verification: true,
+  email_payments: true,
+  email_security: true,
+  in_app_reservations: true,
+  in_app_messages: true,
+  in_app_verification: true,
+  in_app_payments: true,
+  in_app_security: true,
+  discreet_notifications: true,
+  use_display_name: true,
+};
 
 export async function getCurrentProfile() {
   const supabase = await createClient();
@@ -33,6 +51,27 @@ export async function getNotifications() {
     .limit(50);
 
   return (data ?? []) as NotificationRecord[];
+}
+
+export async function getCurrentUserPreferences(): Promise<Omit<UserPreferenceRecord, "user_id" | "created_at" | "updated_at">> {
+  const supabase = await createClient();
+  if (!supabase) return defaultUserPreferences;
+
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return defaultUserPreferences;
+
+  const { data, error } = await supabase
+    .from("user_preferences")
+    .select("language,currency,timezone,email_reservations,email_messages,email_verification,email_payments,email_security,in_app_reservations,in_app_messages,in_app_verification,in_app_payments,in_app_security,discreet_notifications,use_display_name")
+    .eq("user_id", userData.user.id)
+    .maybeSingle();
+
+  if (error || !data) return defaultUserPreferences;
+
+  return {
+    ...defaultUserPreferences,
+    ...(data as Partial<typeof defaultUserPreferences>),
+  };
 }
 
 export async function getUnreadMessageCount() {

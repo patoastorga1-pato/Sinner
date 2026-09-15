@@ -55,7 +55,7 @@ export const profileSchema = z.object({
   lastName: z.string().trim().min(1, "Last name is required.").max(80),
   displayName: z.string().trim().max(80).optional(),
   avatarUrl: z.url("Enter a valid avatar URL.").or(z.literal("")).optional(),
-  bio: z.string().trim().max(500).optional(),
+  bio: z.string().trim().max(300).optional(),
 });
 
 export function firstValidationError(error: z.ZodError) {
