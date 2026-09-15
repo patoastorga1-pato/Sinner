@@ -17,6 +17,24 @@ import { createClient } from "@/lib/supabase/server";
 const identityDocumentBucket = "identity-documents";
 const identityDocumentMaxBytes = 8 * 1024 * 1024;
 const identityDocumentMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const avatarBucket = "avatars";
+const avatarMaxBytes = 5 * 1024 * 1024;
+const avatarMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const supportedLanguages = new Set(["es-MX", "en"]);
+const supportedCurrencies = new Set(["MXN"]);
+const supportedTimezones = new Set([
+  "",
+  "America/Mexico_City",
+  "America/Cancun",
+  "America/Monterrey",
+  "America/Merida",
+  "America/Bahia_Banderas",
+  "America/Mazatlan",
+  "America/Chihuahua",
+  "America/Hermosillo",
+  "America/Tijuana",
+  "America/Ciudad_Juarez",
+]);
 
 function value(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
@@ -31,6 +49,17 @@ function documentExtension(file: File) {
   if (file.type === "image/png") return "png";
   if (file.type === "image/webp") return "webp";
   return "jpg";
+}
+
+function checked(formData: FormData, key: string) {
+  return ["true", "1", "on", "yes"].includes(value(formData, key).toLowerCase());
+}
+
+function avatarStoragePathFromPublicUrl(publicUrl: string | null | undefined) {
+  if (!publicUrl) return null;
+  const marker = `/storage/v1/object/public/${avatarBucket}/`;
+  const index = publicUrl.indexOf(marker);
+  return index >= 0 ? decodeURIComponent(publicUrl.slice(index + marker.length)) : null;
 }
 
 async function requireSupabase(returnPath: string) {
@@ -193,6 +222,122 @@ export async function updateProfileAction(formData: FormData) {
   revalidatePath("/profile");
   revalidatePath("/settings");
   redirect(withMessage(returnPath, "success", "Profile updated."));
+}
+
+export async function updateSettingsAction(formData: FormData) {
+  const returnPath = "/settings";
+  const parsed = profileSchema.safeParse({
+    firstName: value(formData, "firstName"),
+    lastName: value(formData, "lastName"),
+    displayName: value(formData, "displayName"),
+    avatarUrl: "",
+    bio: value(formData, "bio"),
+  });
+
+  if (!parsed.success) {
+    redirect(withMessage(returnPath, "error", firstValidationError(parsed.error)));
+  }
+
+  const language = value(formData, "language") || "en";
+  const currency = value(formData, "currency") || "MXN";
+  const timezone = value(formData, "timezone");
+
+  if (!supportedLanguages.has(language)) redirect(withMessage(returnPath, "error", "Choose a supported language."));
+  if (!supportedCurrencies.has(currency)) redirect(withMessage(returnPath, "error", "Choose a supported currency."));
+  if (!supportedTimezones.has(timezone)) redirect(withMessage(returnPath, "error", "Choose a supported time zone."));
+
+  const supabase = await requireSupabase(returnPath);
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) redirect("/login?redirect=/settings");
+
+  const { data: currentProfile } = await supabase
+    .from("profiles")
+    .select("avatar_url")
+    .eq("id", userData.user.id)
+    .maybeSingle();
+
+  let avatarUrl: string | null | undefined;
+  const removeAvatar = checked(formData, "removeAvatar");
+  const avatar = uploadedFile(formData, "avatar");
+
+  if (avatar) {
+    if (!avatarMimeTypes.has(avatar.type)) {
+      redirect(withMessage(returnPath, "error", "Upload a JPG, PNG or WEBP profile photo."));
+    }
+
+    if (avatar.size > avatarMaxBytes) {
+      redirect(withMessage(returnPath, "error", "Profile photo must be 5 MB or smaller."));
+    }
+
+    const storagePath = `${userData.user.id}/${crypto.randomUUID()}.${documentExtension(avatar)}`;
+    const { error: uploadError } = await supabase.storage
+      .from(avatarBucket)
+      .upload(storagePath, avatar, {
+        contentType: avatar.type,
+        upsert: false,
+      });
+
+    if (uploadError) redirect(withMessage(returnPath, "error", "We could not update your profile photo right now."));
+
+    avatarUrl = supabase.storage.from(avatarBucket).getPublicUrl(storagePath).data.publicUrl;
+  } else if (removeAvatar) {
+    avatarUrl = null;
+  }
+
+  const profileUpdate: {
+    first_name: string;
+    last_name: string;
+    display_name: string | null;
+    bio: string | null;
+    avatar_url?: string | null;
+  } = {
+    first_name: parsed.data.firstName,
+    last_name: parsed.data.lastName,
+    display_name: parsed.data.displayName || null,
+    bio: parsed.data.bio || null,
+  };
+
+  if (avatarUrl !== undefined) profileUpdate.avatar_url = avatarUrl;
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update(profileUpdate)
+    .eq("id", userData.user.id);
+
+  if (profileError) redirect(withMessage(returnPath, "error", profileError.message));
+
+  const { error: preferencesError } = await supabase
+    .from("user_preferences")
+    .upsert({
+      user_id: userData.user.id,
+      language,
+      currency,
+      timezone: timezone || null,
+      email_reservations: checked(formData, "email_reservations"),
+      email_messages: checked(formData, "email_messages"),
+      email_verification: checked(formData, "email_verification"),
+      email_payments: checked(formData, "email_payments"),
+      email_security: checked(formData, "email_security"),
+      in_app_reservations: checked(formData, "in_app_reservations"),
+      in_app_messages: checked(formData, "in_app_messages"),
+      in_app_verification: checked(formData, "in_app_verification"),
+      in_app_payments: checked(formData, "in_app_payments"),
+      in_app_security: checked(formData, "in_app_security"),
+      discreet_notifications: checked(formData, "discreet_notifications"),
+      use_display_name: checked(formData, "use_display_name"),
+    }, { onConflict: "user_id" });
+
+  if (preferencesError) redirect(withMessage(returnPath, "error", "We could not save preferences right now."));
+
+  const oldAvatarPath = avatarUrl !== undefined ? avatarStoragePathFromPublicUrl(String(currentProfile?.avatar_url ?? "")) : null;
+  if (oldAvatarPath && oldAvatarPath.startsWith(`${userData.user.id}/`)) {
+    await supabase.storage.from(avatarBucket).remove([oldAvatarPath]);
+  }
+
+  revalidatePath("/", "layout");
+  revalidatePath("/profile");
+  revalidatePath("/settings");
+  redirect(withMessage(returnPath, "success", "Settings saved."));
 }
 
 export async function updateVerificationAction(formData: FormData) {
