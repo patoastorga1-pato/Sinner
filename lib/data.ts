@@ -103,13 +103,53 @@ export const spaces: Space[] = [
   },
 ];
 
-export const experiences = [
+export type DevelopmentExperience = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  image: string;
+  city: string;
+  state: string;
+  country: string;
+  durationMinutes: number;
+  maxGuests: number;
+  price: number | null;
+  currency: string;
+  categorySlugs: string[];
+  instantBooking: boolean;
+  verifiedVenue: boolean;
+  ratingAverage: number | null;
+  reviewCount: number;
+  included: string[];
+  rules: string[];
+  cancellationPolicy: string | null;
+  createdAt: string;
+};
+
+export const experiences: DevelopmentExperience[] = [
   {
     id: "10000000-0000-4000-8000-000000000001",
     slug: "private-jacuzzi-experience",
     name: "Private Jacuzzi Experience",
     description: "Warm water, low light and complete privacy.",
     image: "/images/experience-jacuzzi.png",
+    city: "Guadalajara",
+    state: "Jalisco",
+    country: "Mexico",
+    durationMinutes: 180,
+    maxGuests: 2,
+    price: 2800,
+    currency: "MXN",
+    categorySlugs: ["couples", "jacuzzi"],
+    instantBooking: false,
+    verifiedVenue: true,
+    ratingAverage: null,
+    reviewCount: 0,
+    included: [],
+    rules: [],
+    cancellationPolicy: null,
+    createdAt: "2026-09-01T00:00:00.000Z",
   },
   {
     id: "10000000-0000-4000-8000-000000000002",
@@ -117,6 +157,22 @@ export const experiences = [
     name: "Couples Escape",
     description: "A private setting designed for two.",
     image: "/images/experience-couples.png",
+    city: "Zapopan",
+    state: "Jalisco",
+    country: "Mexico",
+    durationMinutes: 300,
+    maxGuests: 2,
+    price: 3900,
+    currency: "MXN",
+    categorySlugs: ["couples", "private-celebrations"],
+    instantBooking: false,
+    verifiedVenue: true,
+    ratingAverage: null,
+    reviewCount: 0,
+    included: [],
+    rules: [],
+    cancellationPolicy: null,
+    createdAt: "2026-09-02T00:00:00.000Z",
   },
   {
     id: "10000000-0000-4000-8000-000000000003",
@@ -124,6 +180,22 @@ export const experiences = [
     name: "Themed Experience",
     description: "Immersive rooms with a distinct point of view.",
     image: "/images/experience-themed.png",
+    city: "Guadalajara",
+    state: "Jalisco",
+    country: "Mexico",
+    durationMinutes: 240,
+    maxGuests: 4,
+    price: 3200,
+    currency: "MXN",
+    categorySlugs: ["themed"],
+    instantBooking: false,
+    verifiedVenue: true,
+    ratingAverage: null,
+    reviewCount: 0,
+    included: [],
+    rules: [],
+    cancellationPolicy: null,
+    createdAt: "2026-09-03T00:00:00.000Z",
   },
   {
     id: "10000000-0000-4000-8000-000000000004",
@@ -131,6 +203,22 @@ export const experiences = [
     name: "Private Content Studio",
     description: "Controlled light, discreet access and creator-ready sets.",
     image: "/images/experience-studio.png",
+    city: "Guadalajara",
+    state: "Jalisco",
+    country: "Mexico",
+    durationMinutes: 240,
+    maxGuests: 6,
+    price: 4500,
+    currency: "MXN",
+    categorySlugs: ["creator", "themed"],
+    instantBooking: false,
+    verifiedVenue: true,
+    ratingAverage: null,
+    reviewCount: 0,
+    included: [],
+    rules: [],
+    cancellationPolicy: null,
+    createdAt: "2026-09-04T00:00:00.000Z",
   },
   {
     id: "10000000-0000-4000-8000-000000000005",
@@ -138,6 +226,22 @@ export const experiences = [
     name: "Sensory Experience",
     description: "Atmosphere, sound and detail curated for the night.",
     image: "/images/experience-sensory.png",
+    city: "Zapopan",
+    state: "Jalisco",
+    country: "Mexico",
+    durationMinutes: 180,
+    maxGuests: 2,
+    price: 3500,
+    currency: "MXN",
+    categorySlugs: ["sensory", "couples"],
+    instantBooking: false,
+    verifiedVenue: true,
+    ratingAverage: null,
+    reviewCount: 0,
+    included: [],
+    rules: [],
+    cancellationPolicy: null,
+    createdAt: "2026-09-05T00:00:00.000Z",
   },
 ];
 

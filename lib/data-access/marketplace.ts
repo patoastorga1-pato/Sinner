@@ -21,8 +21,45 @@ type Experience = (typeof developmentExperiences)[number];
 type Event = (typeof developmentEvents)[number];
 type UnknownRow = Record<string, unknown>;
 
+export type PublicExperience = Experience;
+
 const PAGE_SIZE = 6;
+const EXPERIENCE_PAGE_SIZE = 6;
 const DEFAULT_PHOTO = "/images/hero-sinner-night.png";
+
+export const experienceCategoryFilters = [
+  { slug: "couples", label: "Couples" },
+  { slug: "jacuzzi", label: "Jacuzzi" },
+  { slug: "sensory", label: "Sensory" },
+  { slug: "themed", label: "Themed" },
+  { slug: "creator", label: "Creator" },
+  { slug: "private-celebrations", label: "Private celebrations" },
+] as const;
+
+export type ExperienceSort = "recommended" | "rating" | "price-asc" | "price-desc" | "newest";
+
+export type ExperienceSearchQuery = {
+  location: string;
+  date: string;
+  guests: number;
+  minPrice: number | null;
+  maxPrice: number | null;
+  duration: number | null;
+  category: string;
+  sort: ExperienceSort;
+  page: number;
+};
+
+export type ExperienceSearchResult = {
+  experiences: Experience[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  dateFilterConnected: boolean;
+  favoriteModelConnected: boolean;
+  bookingModelConnected: boolean;
+};
 
 function shouldUseDevelopmentFallback() {
   return process.env.NODE_ENV !== "production";
@@ -597,16 +634,137 @@ function formatEventMoney(value: number | null, currency = "MXN") {
   return currency === "MXN" ? `${formatted} MXN` : formatted;
 }
 
+function mapExperienceRow(row: UnknownRow): Experience {
+  const fallback = developmentExperiences.find((item) => item.slug === row.slug);
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    name: String(row.name),
+    description: String(row.description ?? fallback?.description ?? "A private SINNER experience."),
+    image: fallback?.image ?? "/images/experience-sensory.png",
+    city: String(row.city ?? fallback?.city ?? ""),
+    state: String(row.state ?? fallback?.state ?? ""),
+    country: String(row.country ?? fallback?.country ?? "Mexico"),
+    durationMinutes: asNumber(row.duration_minutes, fallback?.durationMinutes ?? 0),
+    maxGuests: asNumber(row.max_guests, fallback?.maxGuests ?? 1),
+    price: asNullableNumber(row.price) ?? fallback?.price ?? null,
+    currency: String(row.currency ?? fallback?.currency ?? "MXN"),
+    categorySlugs: fallback?.categorySlugs ?? [],
+    instantBooking: fallback?.instantBooking ?? false,
+    verifiedVenue: fallback?.verifiedVenue ?? Boolean(row.host_id),
+    ratingAverage: fallback?.ratingAverage ?? null,
+    reviewCount: fallback?.reviewCount ?? 0,
+    included: fallback?.included ?? [],
+    rules: fallback?.rules ?? [],
+    cancellationPolicy: fallback?.cancellationPolicy ?? null,
+    createdAt: String(row.created_at ?? fallback?.createdAt ?? new Date(0).toISOString()),
+  };
+}
+
+function searchDevelopmentExperiences(query: ExperienceSearchQuery): ExperienceSearchResult {
+  const location = normalize(query.location);
+  const filtered = developmentExperiences.filter((experience) => {
+    const searchableLocation = normalize(`${experience.city} ${experience.state} ${experience.country}`);
+    if (location && !searchableLocation.includes(location)) return false;
+    if (experience.maxGuests < query.guests) return false;
+    if (query.category && !experience.categorySlugs.includes(query.category)) return false;
+    if (query.minPrice !== null && (experience.price === null || experience.price < query.minPrice)) return false;
+    if (query.maxPrice !== null && (experience.price === null || experience.price > query.maxPrice)) return false;
+    if (query.duration !== null && experience.durationMinutes > query.duration) return false;
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    if (query.sort === "rating") return (b.ratingAverage ?? 0) - (a.ratingAverage ?? 0) || b.reviewCount - a.reviewCount;
+    if (query.sort === "price-asc") return (a.price ?? Number.MAX_SAFE_INTEGER) - (b.price ?? Number.MAX_SAFE_INTEGER);
+    if (query.sort === "price-desc") return (b.price ?? -1) - (a.price ?? -1);
+    if (query.sort === "newest") return String(b.createdAt).localeCompare(String(a.createdAt));
+    return Number(b.verifiedVenue) - Number(a.verifiedVenue) || (a.price ?? Number.MAX_SAFE_INTEGER) - (b.price ?? Number.MAX_SAFE_INTEGER) || a.slug.localeCompare(b.slug);
+  });
+
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / EXPERIENCE_PAGE_SIZE));
+  const page = Math.min(query.page, totalPages);
+  return {
+    experiences: filtered.slice(0, page * EXPERIENCE_PAGE_SIZE),
+    total,
+    page,
+    pageSize: EXPERIENCE_PAGE_SIZE,
+    totalPages,
+    dateFilterConnected: false,
+    favoriteModelConnected: false,
+    bookingModelConnected: false,
+  };
+}
+
 export async function getExperiences(): Promise<Experience[]> {
   if (shouldUseDevelopmentFixtures()) return developmentExperiences;
   const supabase = await createClient();
   if (!supabase) return developmentExperiences;
-  const { data, error } = await supabase.from("experiences").select("id,name,slug,description").eq("status", "approved").order("created_at", { ascending: false });
+  const { data, error } = await supabase
+    .from("experiences")
+    .select("id,host_id,name,slug,description,city,state,country,duration_minutes,max_guests,price,currency,status,created_at,updated_at")
+    .eq("status", "approved")
+    .order("created_at", { ascending: false });
   if (error || (!data?.length && shouldUseDevelopmentFallback())) return developmentExperiences;
-  return (data ?? []).map((row) => {
-    const fallback = developmentExperiences.find((item) => item.slug === row.slug);
-    return { id: String(row.id), slug: String(row.slug), name: String(row.name), description: String(row.description ?? "A private SINNER experience."), image: fallback?.image ?? "/images/experience-sensory.png" };
+  return asRows(data).map(mapExperienceRow);
+}
+
+export async function searchExperiences(query: ExperienceSearchQuery): Promise<ExperienceSearchResult> {
+  if (shouldUseDevelopmentFixtures()) return searchDevelopmentExperiences(query);
+  const supabase = await createClient();
+  if (!supabase) return searchDevelopmentExperiences(query);
+
+  const { data, error } = await supabase
+    .from("experiences")
+    .select("id,host_id,name,slug,description,city,state,country,duration_minutes,max_guests,price,currency,status,created_at,updated_at")
+    .eq("status", "approved")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    if (shouldUseDevelopmentFallback()) return searchDevelopmentExperiences(query);
+    throw new Error(`Unable to search experiences: ${error.message}`);
+  }
+
+  const mapped = asRows(data).map(mapExperienceRow);
+  const location = normalize(query.location);
+  const filtered = mapped.filter((experience) => {
+    const searchableLocation = normalize(`${experience.city} ${experience.state} ${experience.country}`);
+    if (location && !searchableLocation.includes(location)) return false;
+    if (experience.maxGuests < query.guests) return false;
+    if (query.category && !experience.categorySlugs.includes(query.category)) return false;
+    if (query.minPrice !== null && (experience.price === null || experience.price < query.minPrice)) return false;
+    if (query.maxPrice !== null && (experience.price === null || experience.price > query.maxPrice)) return false;
+    if (query.duration !== null && experience.durationMinutes > query.duration) return false;
+    return true;
   });
+
+  filtered.sort((a, b) => {
+    if (query.sort === "rating") return (b.ratingAverage ?? 0) - (a.ratingAverage ?? 0) || b.reviewCount - a.reviewCount;
+    if (query.sort === "price-asc") return (a.price ?? Number.MAX_SAFE_INTEGER) - (b.price ?? Number.MAX_SAFE_INTEGER);
+    if (query.sort === "price-desc") return (b.price ?? -1) - (a.price ?? -1);
+    if (query.sort === "newest") return String(b.createdAt).localeCompare(String(a.createdAt));
+    return Number(b.verifiedVenue) - Number(a.verifiedVenue) || (a.price ?? Number.MAX_SAFE_INTEGER) - (b.price ?? Number.MAX_SAFE_INTEGER) || a.slug.localeCompare(b.slug);
+  });
+
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / EXPERIENCE_PAGE_SIZE));
+  const page = Math.min(query.page, totalPages);
+  return {
+    experiences: filtered.slice(0, page * EXPERIENCE_PAGE_SIZE),
+    total,
+    page,
+    pageSize: EXPERIENCE_PAGE_SIZE,
+    totalPages,
+    dateFilterConnected: false,
+    favoriteModelConnected: false,
+    bookingModelConnected: false,
+  };
+}
+
+export async function getExperienceBySlug(slug: string): Promise<Experience | null> {
+  const experiences = await getExperiences();
+  return experiences.find((experience) => experience.slug === slug) ?? null;
 }
 
 export async function getEvents(): Promise<Event[]> {
