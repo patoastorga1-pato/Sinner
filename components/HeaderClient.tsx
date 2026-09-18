@@ -40,7 +40,7 @@ export function HeaderClient({ auth }: { auth: AuthState }) {
   }, []);
 
   return (
-    <header className={`sticky top-0 z-50 border-b transition-colors duration-300 hairline backdrop-blur-xl ${scrolled ? "bg-sinner-black/95" : "bg-sinner-black/80"}`}>
+    <header className={`sticky top-0 z-[80] border-b transition-colors duration-300 hairline backdrop-blur-xl ${scrolled ? "bg-sinner-black/98 shadow-[0_12px_40px_rgba(0,0,0,0.28)]" : "bg-sinner-black/95"}`}>
       <div className="relative mx-auto grid h-16 max-w-7xl grid-cols-[1fr_auto] items-center px-4 sm:px-6 md:grid-cols-[1fr_auto_1fr] lg:px-8">
         <Link href="/" className="flex items-center gap-2.5">
           <Image src="/logo-sinner.png" alt="SINNER logo" width={44} height={44} className="h-11 w-11 object-cover" />
