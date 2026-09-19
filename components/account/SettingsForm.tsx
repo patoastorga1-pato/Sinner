@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Download, EyeOff, ImagePlus, ShieldCheck, Trash2, UserRound, X } from "lucide-react";
 import { useFormStatus } from "react-dom";
@@ -122,14 +123,8 @@ function SaveButton({ dirty }: { dirty: boolean }) {
   );
 }
 
-function DeleteAccountModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function DeleteAccountModal({ onClose }: { onClose: () => void }) {
   const [continued, setContinued] = useState(false);
-
-  useEffect(() => {
-    if (!open) setContinued(false);
-  }, [open]);
-
-  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[80] grid place-items-center bg-black/80 px-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
@@ -230,7 +225,7 @@ export function SettingsForm({ profile, preferences }: { profile: Profile | null
           <div className="flex flex-col gap-6 md:flex-row md:items-start">
             <div className="flex flex-col items-center gap-4 md:w-48 md:items-start">
               <div className="grid h-28 w-28 place-items-center overflow-hidden rounded-full border border-sinner-gold/25 bg-sinner-gold/10 text-sinner-goldSoft">
-                {avatarPreview ? <img src={avatarPreview} alt="Profile avatar preview" className="h-full w-full object-cover" /> : <UserRound size={42} />}
+                {avatarPreview ? <Image src={avatarPreview} alt="Profile avatar preview" width={112} height={112} unoptimized className="h-full w-full object-cover" /> : <UserRound size={42} />}
               </div>
               <input ref={avatarInputRef} type="file" name="avatar" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={onAvatarChange} />
               <div className="grid w-full gap-2">
@@ -359,7 +354,7 @@ export function SettingsForm({ profile, preferences }: { profile: Profile | null
           </div>
         </div>
       </form>
-      <DeleteAccountModal open={deleteOpen} onClose={() => setDeleteOpen(false)} />
+      {deleteOpen ? <DeleteAccountModal onClose={() => setDeleteOpen(false)} /> : null}
     </>
   );
 }

@@ -14,7 +14,7 @@ export function ExperienceFavoriteButton({ experienceName, authenticated }: { ex
       router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
-    showToast("Experience favorites need the favorites table to support experience_id before this can save.", "error");
+    showToast("Experience favorites are not available yet.", "error");
   }
 
   return (
