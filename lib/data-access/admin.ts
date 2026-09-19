@@ -70,6 +70,18 @@ export type AdminSpace = {
   currency: string;
 };
 
+export type AdminSpaceReview = AdminSpace & {
+  shortDescription: string | null;
+  description: string | null;
+  postalCode: string | null;
+  cleaningFee: number;
+  minimumHours: number;
+  houseRules: string[];
+  photos: Array<{ id: string; url: string; isCover: boolean }>;
+  amenities: string[];
+  allowedUses: string[];
+};
+
 export type AdminPublication = {
   id: string;
   kind: "space" | "experience" | "event";
@@ -217,6 +229,14 @@ function asNullableNumber(value: unknown) {
   if (value === null || value === undefined || value === "") return null;
   const result = Number(value);
   return Number.isFinite(result) ? result : null;
+}
+
+function resolveSpacePhoto(storagePath: unknown) {
+  const path = String(storagePath ?? "").trim();
+  if (!path) return "/images/hero-sinner-night.png";
+  if (/^https?:\/\//i.test(path)) return path;
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+  return baseUrl ? `${baseUrl}/storage/v1/object/public/space-photos/${path.replace(/^\//, "")}` : "/images/hero-sinner-night.png";
 }
 
 function displayName(profile: UnknownRow | null | undefined, fallback = "SINNER member") {
@@ -502,6 +522,36 @@ export async function getAdminSpaces(): Promise<AdminSpace[]> {
       publishedAt: row.published_at ? String(row.published_at) : null,
     };
   });
+}
+
+export async function getAdminSpaceReview(id: string): Promise<AdminSpaceReview | null> {
+  const supabase = await createClient();
+  if (!supabase) return null;
+  const [spaces, detailResult] = await Promise.all([
+    getAdminSpaces(),
+    supabase.from("spaces").select(`
+      id,short_description,description,postal_code,cleaning_fee,minimum_hours,house_rules,
+      space_photos(id,storage_path,sort_order,is_cover),
+      space_amenities(amenities(name)),
+      space_allowed_uses(allowed,allowed_uses(name))
+    `).eq("id", id).maybeSingle(),
+  ]);
+  const base = spaces.find((space) => space.id === id);
+  if (!base) return null;
+  const detail = asObject(detailResult.data);
+  const photos = asRows(detail?.space_photos).sort((a, b) => asNumber(a.sort_order) - asNumber(b.sort_order));
+  return {
+    ...base,
+    shortDescription: detail?.short_description ? String(detail.short_description) : null,
+    description: detail?.description ? String(detail.description) : null,
+    postalCode: detail?.postal_code ? String(detail.postal_code) : null,
+    cleaningFee: asNumber(detail?.cleaning_fee),
+    minimumHours: asNumber(detail?.minimum_hours, 1),
+    houseRules: asRows(detail?.house_rules).map((rule, index) => String(rule.detail ?? rule.label ?? `Rule ${index + 1}`)),
+    photos: photos.map((photo) => ({ id: String(photo.id), url: resolveSpacePhoto(photo.storage_path), isCover: Boolean(photo.is_cover) })),
+    amenities: asRows(detail?.space_amenities).map((item) => String(asObject(item.amenities)?.name ?? "")).filter(Boolean),
+    allowedUses: asRows(detail?.space_allowed_uses).filter((item) => Boolean(item.allowed)).map((item) => String(asObject(item.allowed_uses)?.name ?? "")).filter(Boolean),
+  };
 }
 
 export async function getAdminPublications(): Promise<AdminPublication[]> {

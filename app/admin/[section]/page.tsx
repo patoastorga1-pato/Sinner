@@ -185,9 +185,10 @@ export default async function AdminSectionPage({
   await requireRole("admin", `/admin/${key}`);
 
   if (key === "host-requests" || key === "host-approvals") {
-    const [applications, counts] = await Promise.all([getAdminHostApplications(), getHostApplicationCounts()]);
+    const [applications, counts, publications] = await Promise.all([getAdminHostApplications(), getHostApplicationCounts(), getAdminPublications()]);
     const requestedStatus = hostApplicationStatuses.includes(query.status as HostApplicationStatus) ? query.status : "pending";
     const pendingApplications = applications.filter((application) => application.status === requestedStatus);
+    const pendingListings = publications.filter((publication) => publication.kind === "space" && publication.status === "pending_review");
 
     return (
       <AdminShell title={section.title} copy={section.copy}>
@@ -221,6 +222,14 @@ export default async function AdminSectionPage({
             )) : (
               <EmptyPanel title="No host requests yet." copy="New host access requests will appear here after users submit onboarding." />
             )}
+          </div>
+        </section>
+
+        <section className="mt-10 border-t hairline pt-8">
+          <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase text-sinner-goldSoft">Publication approval</p><h2 className="mt-2 font-display text-4xl text-sinner-ivory">Listings awaiting review</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-sinner-mist">Open a listing to inspect its photos, address, description, prices, amenities, uses and rules before deciding.</p></div><span className="text-sm text-sinner-mist">{pendingListings.length} pending</span></div>
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            {pendingListings.map((listing) => <article key={listing.id} className="flex flex-col justify-between gap-5 rounded-md border hairline bg-white/[0.025] p-5 sm:flex-row sm:items-center"><div><p className="text-xs font-semibold uppercase text-sinner-goldSoft">{listing.ownerName}</p><h3 className="mt-2 font-display text-2xl text-white">{listing.name}</h3><p className="mt-2 text-sm text-sinner-mist">{listing.city}, {listing.state} · {listing.detail}</p></div><Link href={`/admin/content/space/${listing.id}`} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-sinner-gold px-5 text-sm font-semibold text-black">Review listing</Link></article>)}
+            {!pendingListings.length ? <div className="lg:col-span-2"><EmptyPanel title="No listings awaiting review." copy="Spaces submitted by approved hosts will appear here." /></div> : null}
           </div>
         </section>
       </AdminShell>
@@ -331,7 +340,7 @@ export default async function AdminSectionPage({
                 {pending.map((publication) => (
                   <tr key={`${publication.kind}-${publication.id}`}>
                     <Cell>
-                      {publication.href ? <Link href={publication.href} className="font-medium hover:text-sinner-goldSoft">{publication.name}</Link> : <span className="font-medium">{publication.name}</span>}
+                      <Link href={publication.kind === "space" ? `/admin/content/space/${publication.id}` : publication.href ?? "#"} className="font-medium hover:text-sinner-goldSoft">{publication.name}</Link>
                       <p className="mt-1 text-xs text-sinner-mist/60">{publication.detail}</p>
                     </Cell>
                     <Cell muted className="capitalize">{publication.kind}</Cell>
@@ -339,7 +348,7 @@ export default async function AdminSectionPage({
                     <Cell muted>{publication.city}, {publication.state}</Cell>
                     <Cell><StatusPill value={publication.status} /></Cell>
                     <Cell muted>{publication.price === null ? "Quote" : `${formatMoney(publication.price, publication.currency)} ${publication.currency}`}</Cell>
-                    <Cell><PublicationStatusForm publication={publication} returnPath={`/admin/${key}`} /></Cell>
+                    <Cell><Link href={publication.kind === "space" ? `/admin/content/space/${publication.id}` : publication.href ?? "#"} className="inline-flex min-h-10 items-center rounded-lg bg-sinner-gold px-4 text-sm font-semibold text-black">Review</Link></Cell>
                   </tr>
                 ))}
               </tbody>
