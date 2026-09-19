@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Bell, CalendarDays, Heart, MessageCircle, UserRound } from "lucide-react";
 import { AccountShell } from "@/components/account/AccountShell";
@@ -20,7 +21,7 @@ function memberSince(value?: string | null) {
 
 function Avatar({ src, name }: { src?: string | null; name: string }) {
   if (src) {
-    return <img src={src} alt={`${name} avatar`} className="h-20 w-20 rounded-full border border-sinner-gold/25 object-cover" />;
+    return <Image src={src} alt={`${name} avatar`} width={80} height={80} className="h-20 w-20 rounded-full border border-sinner-gold/25 object-cover" />;
   }
   return (
     <span className="grid h-20 w-20 place-items-center rounded-full border border-sinner-gold/25 bg-sinner-gold/10 text-sinner-goldSoft">
@@ -52,8 +53,9 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
     getUnreadMessageCount(),
   ]);
   const name = displayName(profile);
+  const currentTime = new Date().getTime();
   const nextBooking = bookings
-    .filter((booking) => booking.status === "confirmed" && new Date(booking.startDatetime).getTime() >= Date.now())
+    .filter((booking) => booking.status === "confirmed" && new Date(booking.startDatetime).getTime() >= currentTime)
     .sort((a, b) => new Date(a.startDatetime).getTime() - new Date(b.startDatetime).getTime())[0];
 
   return (

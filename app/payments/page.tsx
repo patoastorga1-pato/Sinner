@@ -16,7 +16,7 @@ export default async function PaymentsPage() {
           <section className="premium-panel p-6">
             <CreditCard size={20} className="text-sinner-goldSoft" />
             <h2 className="mt-4 font-display text-3xl text-sinner-ivory">Payment methods</h2>
-            <p className="mt-3 text-sm leading-6 text-sinner-mist">Prepared for PandaBlue approval and provider tokenization. No card collection is active yet.</p>
+            <p className="mt-3 text-sm leading-6 text-sinner-mist">Saved payment methods are not available yet. SINNER is not collecting card details at this time.</p>
           </section>
           <section className="premium-panel p-6">
             <ReceiptText size={20} className="text-sinner-goldSoft" />
@@ -26,7 +26,7 @@ export default async function PaymentsPage() {
           <section className="premium-panel p-6">
             <FileText size={20} className="text-sinner-goldSoft" />
             <h2 className="mt-4 font-display text-3xl text-sinner-ivory">Billing information</h2>
-            <p className="mt-3 text-sm leading-6 text-sinner-mist">Billing profile fields are prepared for a future payment integration.</p>
+            <p className="mt-3 text-sm leading-6 text-sinner-mist">Billing information will be requested only when secure payments become available.</p>
           </section>
         </div>
 
@@ -34,7 +34,7 @@ export default async function PaymentsPage() {
           <section className="premium-panel overflow-hidden">
             <div className="border-b hairline p-5 sm:p-6">
               <h2 className="font-display text-3xl text-sinner-ivory">Payment records</h2>
-              <p className="mt-2 text-sm text-sinner-mist">These rows come from Supabase payment ledgers.</p>
+              <p className="mt-2 text-sm text-sinner-mist">Your recorded transactions appear below.</p>
             </div>
             <div className="divide-y hairline">
               {payments.map((payment) => (
@@ -53,7 +53,7 @@ export default async function PaymentsPage() {
             </div>
           </section>
         ) : (
-          <EmptyState icon={CreditCard} title="No payment records yet." copy="PandaBlue is not connected yet. Payment methods and transactions will appear here after provider integration." />
+          <EmptyState icon={CreditCard} title="No payment records yet." copy="Payment methods and transactions will appear here when secure payments become available." />
         )}
       </div>
     </AccountShell>

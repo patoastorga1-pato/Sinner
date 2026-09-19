@@ -48,7 +48,7 @@ export default async function ExperiencePage({ params }: { params: Promise<{ slu
               {[
                 { icon: Clock, label: "Duration", value: formatDuration(experience.durationMinutes) },
                 { icon: Users, label: "Capacity", value: `Up to ${experience.maxGuests} ${experience.maxGuests === 1 ? "guest" : "guests"}` },
-                { icon: CalendarDays, label: "Availability", value: "Schedule backend pending" },
+                { icon: CalendarDays, label: "Availability", value: "Scheduling opens soon" },
               ].map((item) => {
                 const Icon = item.icon;
                 return (
@@ -80,7 +80,7 @@ export default async function ExperiencePage({ params }: { params: Promise<{ slu
                   </div>
                 ) : (
                   <p className="mt-4 rounded-xl border hairline bg-white/[0.02] p-5 text-sm leading-6 text-sinner-mist">
-                    Inclusions are not connected in the current Experiences schema yet. They should come from an experience_inclusions table or equivalent real host data.
+                    The host has not published the included items yet.
                   </p>
                 )}
               </div>
@@ -94,7 +94,7 @@ export default async function ExperiencePage({ params }: { params: Promise<{ slu
                   </div>
                 ) : (
                   <p className="mt-4 rounded-xl border hairline bg-white/[0.02] p-5 text-sm leading-6 text-sinner-mist">
-                    Rules are not configured for this experience yet. The host rules and approval model should be connected before public booking.
+                    The host has not published experience-specific rules yet.
                   </p>
                 )}
               </div>
@@ -103,13 +103,13 @@ export default async function ExperiencePage({ params }: { params: Promise<{ slu
             <section className="mt-10 grid gap-6 border-t hairline pt-8 md:grid-cols-2">
               <div className="rounded-xl border hairline bg-white/[0.025] p-5">
                 <p className="text-xs font-semibold uppercase text-sinner-goldSoft">Hosted at</p>
-                <h2 className="mt-2 font-display text-3xl text-sinner-ivory">Space relation pending</h2>
-                <p className="mt-3 text-sm leading-6 text-sinner-mist">The current experiences table does not include space_id. Add that relation to open the related Space from here.</p>
+                <h2 className="mt-2 font-display text-3xl text-sinner-ivory">Venue details private</h2>
+                <p className="mt-3 text-sm leading-6 text-sinner-mist">The related venue will appear here when it is assigned by the host.</p>
               </div>
               <div className="rounded-xl border hairline bg-white/[0.025] p-5">
                 <p className="text-xs font-semibold uppercase text-sinner-goldSoft">Host</p>
                 <h2 className="mt-2 font-display text-3xl text-sinner-ivory">SINNER host</h2>
-                <p className="mt-3 text-sm leading-6 text-sinner-mist">Public host profile data can be shown here once host_id is assigned and joined to public_host_profiles.</p>
+                <p className="mt-3 text-sm leading-6 text-sinner-mist">Host details will appear after the experience is fully published.</p>
               </div>
             </section>
 
@@ -131,7 +131,7 @@ export default async function ExperiencePage({ params }: { params: Promise<{ slu
               <label className="grid gap-2 text-sm text-sinner-ivory">
                 <span>Select time</span>
                 <select disabled className="h-12 cursor-not-allowed rounded-lg border hairline bg-black/35 px-4 text-sinner-mist outline-none">
-                  <option>Availability not connected</option>
+                  <option>Scheduling opens soon</option>
                 </select>
               </label>
               <label className="grid gap-2 text-sm text-sinner-ivory">
@@ -143,7 +143,7 @@ export default async function ExperiencePage({ params }: { params: Promise<{ slu
               <button type="button" disabled className="mt-2 min-h-12 cursor-not-allowed rounded-lg border border-sinner-gold/25 px-5 text-sm font-semibold text-sinner-mist/70">
                 Reserve
               </button>
-              <p className="text-xs leading-5 text-sinner-mist/70">Experience reservations need experience_id support in bookings, availability slots and payment status before this button can create a real booking.</p>
+              <p className="text-xs leading-5 text-sinner-mist/70">Online reservations for experiences are not available yet.</p>
             </form>
           </aside>
         </div>

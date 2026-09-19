@@ -25,7 +25,7 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
       <div className="mb-6 grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl border hairline bg-white/[0.018] p-5"><LifeBuoy size={18} className="text-sinner-goldSoft" /><h2 className="mt-4 font-semibold text-sinner-ivory">Contact support</h2><p className="mt-2 text-sm leading-6 text-sinner-mist">Create a private ticket for account, booking or safety help.</p></div>
         <div className="rounded-2xl border hairline bg-white/[0.018] p-5"><AlertTriangle size={18} className="text-sinner-goldSoft" /><h2 className="mt-4 font-semibold text-sinner-ivory">Report a problem</h2><p className="mt-2 text-sm leading-6 text-sinner-mist">Use the ticket form and choose safety or technical as needed.</p></div>
-        <div className="rounded-2xl border hairline bg-white/[0.018] p-5"><BookOpen size={18} className="text-sinner-goldSoft" /><h2 className="mt-4 font-semibold text-sinner-ivory">Help center</h2><p className="mt-2 text-sm leading-6 text-sinner-mist">Prepared for future self-service articles.</p></div>
+        <div className="rounded-2xl border hairline bg-white/[0.018] p-5"><BookOpen size={18} className="text-sinner-goldSoft" /><h2 className="mt-4 font-semibold text-sinner-ivory">Help center</h2><p className="mt-2 text-sm leading-6 text-sinner-mist">Help articles will be available here soon.</p></div>
       </div>
       <div className="grid gap-8 lg:grid-cols-[420px_minmax(0,1fr)]">
         <form action={createSupportTicketAction} className="premium-panel p-6 sm:p-8">

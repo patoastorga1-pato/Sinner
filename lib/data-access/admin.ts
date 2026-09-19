@@ -164,6 +164,25 @@ export type AdminSetting = {
   updatedAt: string;
 };
 
+export type AdminSearchResult = {
+  id: string;
+  type: "User" | "Host" | "Booking" | "Space" | "Experience" | "Event";
+  label: string;
+  detail: string;
+  href: string;
+};
+
+export type AdminAuditEvent = {
+  id: string;
+  adminId: string;
+  adminName: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  reason: string | null;
+  createdAt: string;
+};
+
 export type AdminDashboard = {
   users: number;
   hosts: number;
@@ -399,18 +418,6 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
   const reviewCounts = new Map<string, number>();
   asRows(reviewsResult.data).forEach((row) => increment(reviewCounts, row.author_id));
 
-  const documentUrlsByPath = new Map<string, string>();
-  const documentPaths = Array.from(
-    new Set(asRows(profilesResult.data).map((profile) => String(profile.age_verification_document_path ?? "")).filter(Boolean)),
-  );
-
-  await Promise.all(
-    documentPaths.map(async (path) => {
-      const { data } = await supabase.storage.from("identity-documents").createSignedUrl(path, 60 * 60);
-      if (data?.signedUrl) documentUrlsByPath.set(path, data.signedUrl);
-    }),
-  );
-
   return asRows(profilesResult.data).map((profile) => {
     const id = String(profile.id);
     const ageDocumentPath = profile.age_verification_document_path ? String(profile.age_verification_document_path) : null;
@@ -426,7 +433,7 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
       identityStatus: String(profile.identity_verification_status ?? "unverified"),
       ageStatus: String(profile.age_verification_status ?? "unverified"),
       ageDocumentPath,
-      ageDocumentUrl: ageDocumentPath ? documentUrlsByPath.get(ageDocumentPath) ?? null : null,
+      ageDocumentUrl: null,
       ageSubmittedAt: profile.age_verification_submitted_at ? String(profile.age_verification_submitted_at) : null,
       listingCount: listingCounts.get(id) ?? 0,
       approvedListingCount: approvedListingCounts.get(id) ?? 0,
@@ -776,9 +783,18 @@ export async function getAdminConversations(): Promise<AdminConversation[]> {
   const supabase = await createClient();
   if (!supabase) return [];
 
+  const { data: reports } = await supabase
+    .from("reports")
+    .select("target_id")
+    .eq("target_type", "conversation")
+    .in("status", ["open", "reviewing"]);
+  const reportedIds = asRows(reports).map((row) => String(row.target_id ?? "")).filter(Boolean);
+  if (!reportedIds.length) return [];
+
   const { data: conversations } = await supabase
     .from("conversations")
     .select("id,space_id,booking_id,created_at,updated_at,spaces(name),bookings(booking_reference)")
+    .in("id", reportedIds)
     .order("updated_at", { ascending: false })
     .limit(100);
 
@@ -786,13 +802,13 @@ export async function getAdminConversations(): Promise<AdminConversation[]> {
   const conversationIds = conversationRows.map((row) => String(row.id));
   if (!conversationIds.length) return [];
 
-  const [participantsResult, messagesResult] = await Promise.all([
+  const [participantsResult, messageCountsResult] = await Promise.all([
     supabase.from("conversation_participants").select("conversation_id,user_id").in("conversation_id", conversationIds),
-    supabase.from("messages").select("id,conversation_id,sender_id,body,created_at").in("conversation_id", conversationIds).order("created_at", { ascending: false }),
+    supabase.from("messages").select("conversation_id").in("conversation_id", conversationIds),
   ]);
 
   const participantRows = asRows(participantsResult.data);
-  const messageRows = asRows(messagesResult.data);
+  const messageRows = asRows(messageCountsResult.data);
   const participantNames = await getProfileNames(participantRows.map((row) => String(row.user_id ?? "")).filter(Boolean));
 
   const participantsByConversation = new Map<string, string[]>();
@@ -804,26 +820,23 @@ export async function getAdminConversations(): Promise<AdminConversation[]> {
     participantsByConversation.set(conversationId, next);
   });
 
-  const latestMessageByConversation = new Map<string, UnknownRow>();
   const messageCounts = new Map<string, number>();
   messageRows.forEach((message) => {
     const conversationId = String(message.conversation_id);
     messageCounts.set(conversationId, (messageCounts.get(conversationId) ?? 0) + 1);
-    if (!latestMessageByConversation.has(conversationId)) latestMessageByConversation.set(conversationId, message);
   });
 
   return conversationRows.map((conversation) => {
     const id = String(conversation.id);
     const space = asObject(conversation.spaces);
     const booking = asObject(conversation.bookings);
-    const latest = latestMessageByConversation.get(id);
     return {
       id,
       spaceName: String(space?.name ?? "Private conversation"),
       bookingReference: booking?.booking_reference ? String(booking.booking_reference) : null,
       participants: participantsByConversation.get(id) ?? [],
-      lastMessage: latest?.body ? String(latest.body) : null,
-      lastMessageAt: String(latest?.created_at ?? conversation.updated_at ?? conversation.created_at),
+      lastMessage: null,
+      lastMessageAt: String(conversation.updated_at ?? conversation.created_at),
       messageCount: messageCounts.get(id) ?? 0,
       createdAt: String(conversation.created_at),
     };
@@ -843,5 +856,80 @@ export async function getAdminSettings(): Promise<AdminSetting[]> {
     key: String(row.key),
     value: (row.value ?? null) as Json,
     updatedAt: String(row.updated_at),
+  }));
+}
+
+export async function searchAdmin(query: string): Promise<AdminSearchResult[]> {
+  const normalized = query.trim().toLocaleLowerCase("es-MX");
+  if (normalized.length < 2) return [];
+
+  const [users, publications, bookings] = await Promise.all([
+    getAdminUsers(),
+    getAdminPublications(),
+    getAdminBookings(),
+  ]);
+  const matches = (values: Array<string | null | undefined>) => values.some((item) => String(item ?? "").toLocaleLowerCase("es-MX").includes(normalized));
+
+  const userResults = users.filter((user) => matches([user.id, user.display_name, user.first_name, user.last_name])).map((user) => ({
+    id: user.id,
+    type: (user.roles.includes("host") ? "Host" : "User") as "Host" | "User",
+    label: user.display_name || `${user.first_name} ${user.last_name}`.trim() || "SINNER member",
+    detail: `${user.roles.join(", ") || "member"} · ${user.id}`,
+    href: user.roles.includes("host") ? `/admin/hosts/${user.id}` : `/admin/users/${user.id}`,
+  }));
+  const publicationResults = publications.filter((item) => matches([item.id, item.name, item.ownerName, item.city, item.state])).map((item) => ({
+    id: item.id,
+    type: (item.kind === "space" ? "Space" : item.kind === "experience" ? "Experience" : "Event") as "Space" | "Experience" | "Event",
+    label: item.name,
+    detail: `${item.ownerName} · ${item.city}, ${item.state}`,
+    href: `/admin/listings?q=${encodeURIComponent(item.name)}`,
+  }));
+  const bookingResults = bookings.filter((booking) => matches([booking.id, booking.bookingReference, booking.guestName, booking.hostName, booking.spaceName])).map((booking) => ({
+    id: booking.id,
+    type: "Booking" as const,
+    label: booking.bookingReference,
+    detail: `${booking.spaceName} · ${booking.guestName}`,
+    href: `/admin/bookings/${booking.id}`,
+  }));
+
+  return [...bookingResults, ...userResults, ...publicationResults].slice(0, 40);
+}
+
+export async function getAdminUserDetail(id: string) {
+  const [users, bookings, publications, reports, support] = await Promise.all([
+    getAdminUsers(), getAdminBookings(), getAdminPublications(), getAdminReports(), getAdminSupportTickets(),
+  ]);
+  const user = users.find((item) => item.id === id) ?? null;
+  if (!user) return null;
+  return {
+    user,
+    bookings: bookings.filter((item) => item.guestId === id || item.hostId === id),
+    publications: publications.filter((item) => item.ownerId === id),
+    reports: reports.filter((item) => item.reporterId === id || item.targetId === id),
+    support: support.filter((item) => item.user_id === id),
+  };
+}
+
+export async function getAdminBookingDetail(id: string) {
+  const bookings = await getAdminBookings();
+  const booking = bookings.find((item) => item.id === id) ?? null;
+  if (!booking) return null;
+  const supabase = await createClient();
+  if (!supabase) return { booking, events: [] as UnknownRow[] };
+  const { data } = await supabase.from("booking_events").select("*").eq("booking_id", id).order("created_at", { ascending: true });
+  return { booking, events: asRows(data) };
+}
+
+export async function getAdminAuditLog(): Promise<AdminAuditEvent[]> {
+  const supabase = await createClient();
+  if (!supabase) return [];
+  const { data, error } = await supabase.from("admin_audit_log").select("id,admin_id,action,target_type,target_id,reason,created_at").order("created_at", { ascending: false }).limit(100);
+  if (error) return [];
+  const rows = asRows(data);
+  const names = await getProfileNames(rows.map((row) => String(row.admin_id ?? "")).filter(Boolean));
+  return rows.map((row) => ({
+    id: String(row.id), adminId: String(row.admin_id), adminName: names.get(String(row.admin_id)) ?? "SINNER admin",
+    action: String(row.action), targetType: String(row.target_type), targetId: String(row.target_id),
+    reason: row.reason ? String(row.reason) : null, createdAt: String(row.created_at),
   }));
 }

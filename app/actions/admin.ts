@@ -149,8 +149,11 @@ export async function updatePublicationStatusAction(formData: FormData) {
   const returnPath = safeRedirectPath(value(formData, "return_path"), "/admin/listings");
   const kind = value(formData, "kind");
   const id = value(formData, "publication_id");
+  const reason = value(formData, "reason").trim();
   const nextStatus = listingStatus(value(formData, "status"));
   const supabase = await requireAdminSupabase(returnPath);
+
+  if (!reason) redirect(withMessage(returnPath, "error", "A reason is required for moderation decisions."));
 
   if (kind === "space") {
     const { error } = await supabase.rpc("admin_update_space_status", {

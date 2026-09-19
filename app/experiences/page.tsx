@@ -84,15 +84,6 @@ function formatDuration(minutes: number) {
   return Number.isInteger(hours) ? `${hours} ${hours === 1 ? "hour" : "hours"}` : `${minutes} min`;
 }
 
-function DateFilterNotice({ query }: { query: ExperienceSearchQuery }) {
-  if (!query.date) return null;
-  return (
-    <div className="mt-4 rounded-xl border border-sinner-gold/20 bg-sinner-gold/[0.06] p-4 text-sm leading-6 text-sinner-goldSoft">
-      Date is captured for the search flow, but experience availability needs an experience availability table before dates can remove unavailable results.
-    </div>
-  );
-}
-
 export default async function ExperiencesPage({ searchParams }: { searchParams: Promise<RawSearchParams> }) {
   const query = parseQuery(await searchParams);
   const [result, favorites] = await Promise.all([searchExperiences(query), getFavoriteSpaceIds()]);
@@ -124,8 +115,9 @@ export default async function ExperiencesPage({ searchParams }: { searchParams: 
             <input name="location" defaultValue={query.location} placeholder="Ciudad, municipio o estado" className="h-12 rounded-lg border hairline bg-black/35 px-4 text-white outline-none transition placeholder:text-sinner-mist/45 focus:border-sinner-gold/45 focus:ring-2 focus:ring-sinner-purple/25" />
           </label>
           <label className="grid gap-2 text-sm text-sinner-ivory">
-            <span className="font-semibold">Date</span>
-            <input type="date" name="date" defaultValue={query.date} className="h-12 rounded-lg border hairline bg-black/35 px-4 text-white outline-none transition [color-scheme:dark] focus:border-sinner-gold/45 focus:ring-2 focus:ring-sinner-purple/25" />
+            <span className="font-semibold">Date · coming soon</span>
+            <input type="date" disabled aria-describedby="experience-date-note" className="h-12 cursor-not-allowed rounded-lg border hairline bg-black/35 px-4 text-sinner-mist/60 outline-none [color-scheme:dark]" />
+            <span id="experience-date-note" className="sr-only">Date availability is not available yet.</span>
           </label>
           <label className="grid gap-2 text-sm text-sinner-ivory">
             <span className="font-semibold">Guests</span>
@@ -155,8 +147,6 @@ export default async function ExperiencesPage({ searchParams }: { searchParams: 
           ))}
         </div>
 
-        <DateFilterNotice query={query} />
-
         {featured ? (
           <section className="mt-10">
             <p className="text-xs font-semibold uppercase text-sinner-goldSoft">Featured experience</p>
@@ -171,7 +161,7 @@ export default async function ExperiencesPage({ searchParams }: { searchParams: 
                 <div className="mt-6 grid gap-3 text-sm text-sinner-mist sm:grid-cols-2">
                   <span className="flex items-center gap-2"><Clock size={16} className="text-sinner-goldSoft" />{formatDuration(featured.durationMinutes)}</span>
                   <span className="flex items-center gap-2"><Users size={16} className="text-sinner-goldSoft" />Up to {featured.maxGuests} guests</span>
-                  <span className="flex items-center gap-2"><CalendarDays size={16} className="text-sinner-goldSoft" />Availability prepared</span>
+                  <span className="flex items-center gap-2"><CalendarDays size={16} className="text-sinner-goldSoft" />Scheduling opens soon</span>
                   <span className="font-semibold text-sinner-ivory">{featured.price === null ? "Request quote" : `From ${formatMoney(featured.price, featured.currency)}`}</span>
                 </div>
                 <Link href={`/experiences/${featured.slug}`} className="mt-7 inline-flex min-h-11 w-fit items-center justify-center rounded-lg bg-sinner-gold px-5 text-sm font-semibold text-black transition duration-200 hover:bg-sinner-goldSoft focus:outline-none focus:ring-2 focus:ring-sinner-gold/35">
@@ -251,7 +241,7 @@ export default async function ExperiencesPage({ searchParams }: { searchParams: 
                   <SearchX size={21} />
                 </span>
                 <h2 className="mt-5 font-display text-4xl text-sinner-ivory">No experiences match your search.</h2>
-                <p className="mt-3 text-sm leading-6 text-sinner-mist">Try changing the date, location or filters.</p>
+                <p className="mt-3 text-sm leading-6 text-sinner-mist">Try changing the location, guest count or filters.</p>
                 <Link href="/experiences" className="mt-7 inline-flex min-h-11 items-center justify-center rounded-lg bg-sinner-gold px-5 text-sm font-semibold text-black transition duration-200 hover:bg-sinner-goldSoft">
                   Clear filters
                 </Link>

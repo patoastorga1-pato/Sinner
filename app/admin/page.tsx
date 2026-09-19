@@ -52,16 +52,16 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       <StatusMessage error={params.error} success={params.success} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Profiles" value={dashboard.users} detail="Registered adult profiles visible to admin." href="/admin/profiles" />
+        <MetricCard label="Users" value={dashboard.users} detail="Registered adult profiles visible to admin." href="/admin/users" />
         <MetricCard label="Hosts" value={dashboard.hosts} detail="Accounts with host permissions." href="/admin/hosts" />
-        <MetricCard label="Listing reviews" value={dashboard.spaces.pending_review} detail="Spaces submitted by hosts and waiting for approval." href="/admin/listing-reviews" />
-        <MetricCard label="Active bookings" value={activeBookings} detail="Pending and confirmed demo reservations." href="/admin/bookings" />
+        <MetricCard label="Listings awaiting review" value={dashboard.spaces.pending_review} detail="Spaces submitted by hosts and waiting for approval." href="/admin/listing-reviews?status=pending_review" />
+        <MetricCard label="Pending bookings" value={activeBookings} detail="Pending and confirmed reservation records." href="/admin/bookings?status=pending" />
       </div>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Open reports" value={dashboard.reportsOpen} detail="Reports that need moderation attention." href="/admin/reports" />
-        <MetricCard label="Open support" value={dashboard.supportOpen} detail="Support tickets open or in progress." href="/admin/support" />
-        <MetricCard label="Pending payments" value={dashboard.paymentsPending} detail="Payment ledgers awaiting provider confirmation." href="/admin/payments" />
+        <MetricCard label="Open reports" value={dashboard.reportsOpen} detail="Reports that need moderation attention." href="/admin/reports?status=open" />
+        <MetricCard label="Open support tickets" value={dashboard.supportOpen} detail="Support tickets open or in progress." href="/admin/support?status=open" />
+        <MetricCard label="Failed / pending payments" value={dashboard.paymentsPending} detail="Payment ledgers awaiting provider confirmation." href="/admin/payments?status=pending" />
         <MetricCard label="Pending payouts" value={dashboard.payoutsPending} detail="Host payout records not yet available or paid." href="/admin/payouts" />
       </div>
 

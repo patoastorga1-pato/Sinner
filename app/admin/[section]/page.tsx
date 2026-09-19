@@ -8,6 +8,7 @@ import { requireRole } from "@/lib/auth/server";
 import { formatBookingRange } from "@/lib/bookings/time";
 import {
   getAdminBookings,
+  getAdminAuditLog,
   getAdminConversations,
   getAdminHostApplications,
   getAdminPayments,
@@ -43,6 +44,8 @@ const sections = {
   payouts: { title: "Payouts", copy: "Host payout ledgers prepared for the future provider connection." },
   messages: { title: "Messages", copy: "Conversation oversight for safety and support investigations." },
   settings: { title: "Settings", copy: "Platform settings stored in Supabase." },
+  moderation: { title: "Moderation", copy: "A focused view of open trust, safety and content cases." },
+  "audit-log": { title: "Audit log", copy: "Permanent records of sensitive administrative actions." },
 } as const;
 
 const publicationStatuses: Array<SpaceStatus | ListingStatus> = ["draft", "pending_review", "approved", "rejected", "suspended"];
@@ -84,37 +87,16 @@ function SummaryCard({ label, value, detail }: { label: string; value: string | 
 
 function PublicationStatusForm({ publication, returnPath }: { publication: AdminPublication; returnPath: string }) {
   return (
-    <div className="grid min-w-72 gap-2">
-      <div className="flex flex-wrap gap-2">
-        {publication.status !== "approved" ? (
-          <form action={updatePublicationStatusAction}>
-            <input type="hidden" name="publication_id" value={publication.id} />
-            <input type="hidden" name="kind" value={publication.kind} />
-            <input type="hidden" name="return_path" value={returnPath} />
-            <input type="hidden" name="status" value="approved" />
-            <button type="submit" className="min-h-10 rounded-lg bg-sinner-gold px-3 text-sm font-semibold text-black transition hover:bg-sinner-goldSoft">Approve</button>
-          </form>
-        ) : null}
-        {publication.status !== "rejected" ? (
-          <form action={updatePublicationStatusAction}>
-            <input type="hidden" name="publication_id" value={publication.id} />
-            <input type="hidden" name="kind" value={publication.kind} />
-            <input type="hidden" name="return_path" value={returnPath} />
-            <input type="hidden" name="status" value="rejected" />
-            <button type="submit" className="min-h-10 rounded-lg border border-rose-300/30 px-3 text-sm font-semibold text-rose-200 transition hover:bg-rose-500/10">Reject</button>
-          </form>
-        ) : null}
-      </div>
-      <form action={updatePublicationStatusAction} className="flex gap-2">
+    <form action={updatePublicationStatusAction} className="grid min-w-72 gap-2">
         <input type="hidden" name="publication_id" value={publication.id} />
         <input type="hidden" name="kind" value={publication.kind} />
         <input type="hidden" name="return_path" value={returnPath} />
         <select name="status" defaultValue={publication.status} className="h-10 rounded-lg border hairline bg-black/35 px-3 text-sm text-white outline-none">
           {publicationStatuses.map((status) => <option key={status} value={status}>{status.replace(/_/g, " ")}</option>)}
         </select>
-        <button type="submit" className="rounded-lg border hairline px-3 text-sm font-semibold text-sinner-mist transition hover:text-white">Set</button>
-      </form>
-    </div>
+        <textarea name="reason" required rows={2} placeholder="Internal reason for this decision" className="rounded-lg border hairline bg-black/35 px-3 py-2 text-sm text-white outline-none placeholder:text-sinner-mist/45" />
+        <button type="submit" className="min-h-10 rounded-lg bg-sinner-gold px-3 text-sm font-semibold text-black transition hover:bg-sinner-goldSoft">Apply moderation decision</button>
+    </form>
   );
 }
 
@@ -195,7 +177,7 @@ export default async function AdminSectionPage({
   searchParams,
 }: {
   params: Promise<{ section: string }>;
-  searchParams: Promise<{ error?: string; success?: string }>;
+  searchParams: Promise<{ error?: string; success?: string; q?: string; status?: string; role?: string; age?: string; identity?: string }>;
 }) {
   const [{ section: key }, query] = await Promise.all([params, searchParams]);
   const section = sections[key as keyof typeof sections];
@@ -204,7 +186,8 @@ export default async function AdminSectionPage({
 
   if (key === "host-requests" || key === "host-approvals") {
     const [applications, counts] = await Promise.all([getAdminHostApplications(), getHostApplicationCounts()]);
-    const pendingApplications = applications.filter((application) => application.status === "pending");
+    const requestedStatus = hostApplicationStatuses.includes(query.status as HostApplicationStatus) ? query.status : "pending";
+    const pendingApplications = applications.filter((application) => application.status === requestedStatus);
 
     return (
       <AdminShell title={section.title} copy={section.copy}>
@@ -219,6 +202,9 @@ export default async function AdminSectionPage({
             />
           ))}
         </div>
+        <form className="mt-5 flex flex-wrap gap-2 rounded-md border hairline bg-white/[0.02] p-3">
+          {hostApplicationStatuses.map((status) => <button key={status} name="status" value={status} className={`rounded-md px-4 py-2 text-sm capitalize ${requestedStatus === status ? "bg-sinner-gold text-black" : "border hairline text-sinner-mist"}`}>{status}</button>)}
+        </form>
 
         <section className="mt-8">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -243,7 +229,15 @@ export default async function AdminSectionPage({
 
   if (key === "profiles" || key === "users" || key === "hosts") {
     const users = await getAdminUsers();
-    const visible = key === "hosts" ? users.filter((user) => user.roles.includes("host")) : users;
+    const search = (query.q ?? "").trim().toLocaleLowerCase("es-MX");
+    const visible = users.filter((user) => {
+      if (key === "hosts" && !user.roles.includes("host")) return false;
+      if (query.role && !user.roles.includes(query.role as never)) return false;
+      if (query.age && user.ageStatus !== query.age) return false;
+      if (query.identity && user.identityStatus !== query.identity) return false;
+      if (search && ![user.id, user.display_name, user.first_name, user.last_name].some((item) => String(item ?? "").toLocaleLowerCase("es-MX").includes(search))) return false;
+      return true;
+    });
     const verifiedAdults = visible.filter((user) => user.ageStatus === "verified").length;
     const pendingAgeReviews = visible.filter((user) => user.ageStatus === "pending" && user.ageDocumentPath).length;
     const admins = visible.filter((user) => user.roles.includes("admin")).length;
@@ -257,6 +251,13 @@ export default async function AdminSectionPage({
           <SummaryCard label="Pending reviews" value={pendingAgeReviews} detail="Uploaded IDs waiting for admin verification." />
           <SummaryCard label="Admins" value={admins} detail="Profiles with admin role." />
         </div>
+        <form className="mt-5 grid gap-2 rounded-md border hairline bg-white/[0.02] p-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_repeat(3,180px)_auto]">
+          <input name="q" defaultValue={query.q} placeholder="Search name or user ID" className="h-11 rounded-md border hairline bg-black/30 px-3 text-sm text-white outline-none" />
+          <select name="role" defaultValue={query.role ?? ""} className="h-11 rounded-md border hairline bg-black/30 px-3 text-sm text-white"><option value="">All roles</option><option value="guest">Client</option><option value="host">Host</option><option value="admin">Admin</option></select>
+          <select name="age" defaultValue={query.age ?? ""} className="h-11 rounded-md border hairline bg-black/30 px-3 text-sm text-white"><option value="">Any age status</option><option value="pending">Pending</option><option value="verified">Verified</option><option value="rejected">Rejected</option><option value="unverified">Unverified</option></select>
+          <select name="identity" defaultValue={query.identity ?? ""} className="h-11 rounded-md border hairline bg-black/30 px-3 text-sm text-white"><option value="">Any identity status</option><option value="verified">Verified</option><option value="unverified">Unverified</option></select>
+          <button className="h-11 rounded-md bg-sinner-gold px-5 text-sm font-semibold text-black">Filter</button>
+        </form>
         <div className="mt-6">
           <AdminTable>
             <table className="w-full min-w-[1520px] border-collapse">
@@ -278,7 +279,7 @@ export default async function AdminSectionPage({
                 {visible.map((user) => (
                   <tr key={user.id}>
                     <Cell>
-                      <p className="font-medium">{user.display_name || `${user.first_name} ${user.last_name}`.trim() || "SINNER member"}</p>
+                      <Link href={`/admin/${key === "hosts" ? "hosts" : "users"}/${user.id}`} className="font-medium hover:text-sinner-goldSoft">{user.display_name || `${user.first_name} ${user.last_name}`.trim() || "SINNER member"}</Link>
                       <p className="mt-1 text-xs text-sinner-mist/60">{user.id.slice(0, 8)}</p>
                     </Cell>
                     <Cell muted>{user.roles.join(", ") || "none"}</Cell>
@@ -287,7 +288,7 @@ export default async function AdminSectionPage({
                     <Cell>
                       <StatusPill value={user.ageStatus} />
                       {user.ageSubmittedAt ? <p className="mt-2 text-xs text-sinner-mist/60">Submitted {formatDate(user.ageSubmittedAt)}</p> : null}
-                      {user.ageDocumentUrl ? <a href={user.ageDocumentUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs font-semibold text-sinner-goldSoft hover:text-sinner-gold">View ID</a> : user.ageDocumentPath ? <p className="mt-2 text-xs text-sinner-mist/60">Document stored</p> : null}
+                      {user.ageDocumentPath ? <p className="mt-2 text-xs text-sinner-mist/60">Document stored · restricted</p> : null}
                     </Cell>
                     <Cell muted>{user.approvedListingCount}/{user.listingCount} approved</Cell>
                     <Cell muted>{user.bookingCount}</Cell>
@@ -395,7 +396,12 @@ export default async function AdminSectionPage({
   }
 
   if (key === "bookings") {
-    const bookings = await getAdminBookings();
+    const allBookings = await getAdminBookings();
+    const search = (query.q ?? "").trim().toLocaleLowerCase("es-MX");
+    const bookings = allBookings.filter((booking) => {
+      if (query.status && booking.status !== query.status) return false;
+      return !search || [booking.id, booking.bookingReference, booking.guestName, booking.hostName, booking.spaceName].some((item) => item.toLocaleLowerCase("es-MX").includes(search));
+    });
     const gross = bookings.reduce((total, booking) => total + booking.totalAmount, 0);
     return (
       <AdminShell title={section.title} copy={section.copy}>
@@ -404,6 +410,11 @@ export default async function AdminSectionPage({
           <SummaryCard label="Gross amount" value={`${formatMoney(gross, "MXN")} MXN`} detail="Sum of visible booking totals." />
           <SummaryCard label="Confirmed" value={bookings.filter((booking) => booking.status === "confirmed").length} detail="Reservations currently confirmed." />
         </div>
+        <form className="mt-5 grid gap-2 rounded-md border hairline bg-white/[0.02] p-3 sm:grid-cols-[minmax(220px,1fr)_220px_auto]">
+          <input name="q" defaultValue={query.q} placeholder="Booking ID, guest, host or listing" className="h-11 rounded-md border hairline bg-black/30 px-3 text-sm text-white outline-none" />
+          <select name="status" defaultValue={query.status ?? ""} className="h-11 rounded-md border hairline bg-black/30 px-3 text-sm text-white"><option value="">All statuses</option>{["pending","payment_pending","confirmed","completed","cancelled","expired","refunded"].map((status) => <option key={status} value={status}>{status.replace(/_/g, " ")}</option>)}</select>
+          <button className="h-11 rounded-md bg-sinner-gold px-5 text-sm font-semibold text-black">Filter</button>
+        </form>
         <div className="mt-6">
           <AdminTable>
             <table className="w-full min-w-[1180px] border-collapse">
@@ -411,7 +422,7 @@ export default async function AdminSectionPage({
               <tbody className="divide-y hairline">
                 {bookings.map((booking) => (
                   <tr key={booking.id}>
-                    <Cell><Link href={`/bookings/${booking.id}`} className="font-medium hover:text-sinner-goldSoft">{booking.bookingReference}</Link><p className="mt-1 text-xs text-sinner-mist/60">{booking.bookingType} · {booking.guestCount} guests</p></Cell>
+                    <Cell><Link href={`/admin/bookings/${booking.id}`} className="font-medium hover:text-sinner-goldSoft">{booking.bookingReference}</Link><p className="mt-1 text-xs text-sinner-mist/60">{booking.bookingType} · {booking.guestCount} guests</p></Cell>
                     <Cell muted>{booking.spaceName}</Cell>
                     <Cell muted>{booking.guestName}</Cell>
                     <Cell muted>{booking.hostName}</Cell>
@@ -429,7 +440,7 @@ export default async function AdminSectionPage({
     );
   }
 
-  if (key === "reports") {
+  if (key === "reports" || key === "moderation") {
     const reports = await getAdminReports();
     return (
       <AdminShell title={section.title} copy={section.copy}>
@@ -591,6 +602,13 @@ export default async function AdminSectionPage({
         </div>
       </AdminShell>
     );
+  }
+
+  if (key === "audit-log") {
+    const events = await getAdminAuditLog();
+    return <AdminShell title={section.title} copy={section.copy}>
+      {events.length ? <AdminTable><table className="w-full min-w-[900px] border-collapse"><thead className="text-left text-xs uppercase text-sinner-mist/70"><tr><th className="px-4 py-3">Admin</th><th className="px-4 py-3">Action</th><th className="px-4 py-3">Target</th><th className="px-4 py-3">Reason</th><th className="px-4 py-3">Timestamp</th></tr></thead><tbody className="divide-y hairline">{events.map((event) => <tr key={event.id}><Cell>{event.adminName}</Cell><Cell>{event.action.replace(/_/g, " ")}</Cell><Cell muted>{event.targetType} · {event.targetId}</Cell><Cell muted>{event.reason ?? "—"}</Cell><Cell muted>{new Date(event.createdAt).toLocaleString()}</Cell></tr>)}</tbody></table></AdminTable> : <EmptyPanel title="No audit activity yet." copy="Sensitive administrative actions will appear here after the admin operations migration is active." />}
+    </AdminShell>;
   }
 
   if (key === "settings") {

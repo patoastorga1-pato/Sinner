@@ -22,9 +22,9 @@ const sections = {
   dashboard: { title: "Host Dashboard", copy: "A private overview of your hosting activity.", empty: "Your host workspace is ready.", detail: "Create your first listing to begin receiving booking requests.", icon: LayoutDashboard },
   listings: { title: "Host Listings", copy: "Manage draft, pending and approved spaces.", empty: "List your first space.", detail: "Create spaces, upload photos and submit them for review.", icon: Building2 },
   bookings: { title: "Host Bookings", copy: "Review requests associated with spaces you own.", empty: "No booking requests yet.", detail: "Requests will appear here after booking functionality is enabled.", icon: NotebookTabs },
-  calendar: { title: "Host Calendar", copy: "Hourly availability and reservation blocks.", empty: "No availability configured.", detail: "The hourly availability engine is planned for Phase 2.", icon: CalendarDays },
+  calendar: { title: "Host Calendar", copy: "Hourly availability and reservation blocks.", empty: "No availability configured.", detail: "Availability controls will appear here when calendar management is enabled.", icon: CalendarDays },
   messages: { title: "Host Messages", copy: "Private conversations linked to listings and bookings.", empty: "No host conversations yet.", detail: "Only conversation participants can access messages.", icon: MessageCircle },
-  earnings: { title: "Host Earnings", copy: "Payout-ready records for approved payments.", empty: "No payout records yet.", detail: "PandaBlue is not connected yet, but the ledger is prepared.", icon: Banknote },
+  earnings: { title: "Host Earnings", copy: "Payout records for completed payments.", empty: "No payout records yet.", detail: "Earnings will appear after secure payments and payouts become available.", icon: Banknote },
 } as const;
 
 const listingStatusStyles: Record<string, string> = {

@@ -35,7 +35,7 @@ export default async function SecurityPage({ searchParams }: { searchParams: Pro
 
           <section className="premium-panel p-6">
             <div className="flex items-center gap-3"><MonitorSmartphone size={18} className="text-sinner-goldSoft" /><h2 className="font-semibold text-sinner-ivory">Sessions</h2></div>
-            <p className="mt-3 text-sm leading-6 text-sinner-mist">Current session controls are handled by Supabase Auth. Other-session management needs a dedicated backend flow.</p>
+            <p className="mt-3 text-sm leading-6 text-sinner-mist">You can securely end the current session. Managing other signed-in devices is not available yet.</p>
           </section>
         </aside>
       </div>
@@ -44,12 +44,12 @@ export default async function SecurityPage({ searchParams }: { searchParams: Pro
         <section className="rounded-2xl border hairline bg-white/[0.018] p-5">
           <ShieldAlert size={19} className="text-sinner-goldSoft" />
           <h2 className="mt-4 font-semibold text-sinner-ivory">Two-factor authentication</h2>
-          <p className="mt-2 text-sm leading-6 text-sinner-mist">Prepared for Supabase MFA configuration. No 2FA toggle is shown until backend support is active.</p>
+          <p className="mt-2 text-sm leading-6 text-sinner-mist">Two-factor authentication is not available yet.</p>
         </section>
         <section className="rounded-2xl border hairline bg-white/[0.018] p-5">
           <ShieldCheck size={19} className="text-sinner-goldSoft" />
           <h2 className="mt-4 font-semibold text-sinner-ivory">Security activity</h2>
-          <p className="mt-2 text-sm leading-6 text-sinner-mist">Security event history needs an audit table before activity can be displayed here.</p>
+          <p className="mt-2 text-sm leading-6 text-sinner-mist">Security activity history is not available yet.</p>
         </section>
       </div>
     </AccountShell>
