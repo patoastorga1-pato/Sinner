@@ -237,7 +237,10 @@ export default async function AdminSectionPage({
   }
 
   if (key === "profiles" || key === "users" || key === "hosts") {
-    const users = await getAdminUsers();
+    const [users, hostPublications] = await Promise.all([
+      getAdminUsers(),
+      key === "hosts" ? getAdminPublications() : Promise.resolve([] as AdminPublication[]),
+    ]);
     const search = (query.q ?? "").trim().toLocaleLowerCase("es-MX");
     const visible = users.filter((user) => {
       if (key === "hosts" && !user.roles.includes("host")) return false;
@@ -285,11 +288,14 @@ export default async function AdminSectionPage({
                 </tr>
               </thead>
               <tbody className="divide-y hairline">
-                {visible.map((user) => (
-                  <tr key={user.id}>
+                {visible.map((user) => {
+                  const publications = hostPublications.filter((publication) => publication.ownerId === user.id);
+                  const pendingPublication = publications.find((publication) => publication.kind === "space" && publication.status === "pending_review");
+                  return <tr key={user.id}>
                     <Cell>
                       <Link href={`/admin/${key === "hosts" ? "hosts" : "users"}/${user.id}`} className="font-medium hover:text-sinner-goldSoft">{user.display_name || `${user.first_name} ${user.last_name}`.trim() || "SINNER member"}</Link>
                       <p className="mt-1 text-xs text-sinner-mist/60">{user.id.slice(0, 8)}</p>
+                      {key === "hosts" ? <div className="mt-3 grid max-w-48 gap-2"><Link href={`/admin/hosts/${user.id}`} className="inline-flex min-h-9 items-center justify-center rounded-md border hairline px-3 text-xs font-semibold text-sinner-goldSoft transition hover:border-sinner-gold/35 hover:bg-sinner-gold/5">View publications ({publications.length})</Link>{pendingPublication ? <Link href={`/admin/content/space/${pendingPublication.id}`} className="inline-flex min-h-9 items-center justify-center rounded-md bg-sinner-gold px-3 text-xs font-semibold text-black transition hover:bg-sinner-goldSoft">Review pending listing</Link> : null}</div> : null}
                     </Cell>
                     <Cell muted>{user.roles.join(", ") || "none"}</Cell>
                     <Cell muted>{genderLabel(user.gender)}</Cell>
@@ -304,8 +310,8 @@ export default async function AdminSectionPage({
                     <Cell muted>{user.openReports} reports · {user.openSupportTickets} support · {user.reviewCount} reviews</Cell>
                     <Cell muted>{formatDate(user.created_at)}</Cell>
                     <Cell><ProfileVerificationForm user={user} returnPath={`/admin/${key}`} /></Cell>
-                  </tr>
-                ))}
+                  </tr>;
+                })}
               </tbody>
             </table>
           </AdminTable>
