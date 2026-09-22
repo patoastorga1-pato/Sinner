@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSiteUrl, isSupabaseConfigured } from "@/lib/config/env";
 import { safeRedirectPath, withMessage } from "@/lib/auth/redirect";
@@ -53,6 +54,20 @@ function documentExtension(file: File) {
 
 function checked(formData: FormData, key: string) {
   return ["true", "1", "on", "yes"].includes(value(formData, key).toLowerCase());
+}
+
+async function requestSiteUrl() {
+  const requestHeaders = await headers();
+  const origin = requestHeaders.get("origin");
+  if (origin && /^https?:\/\//i.test(origin)) return origin.replace(/\/$/, "");
+
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  if (host) {
+    const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+    return `${protocol}://${host}`.replace(/\/$/, "");
+  }
+
+  return getSiteUrl();
 }
 
 function avatarStoragePathFromPublicUrl(publicUrl: string | null | undefined) {
@@ -109,11 +124,12 @@ export async function signupAction(formData: FormData) {
 
   const supabase = await requireSupabase("/signup");
   const acceptedAt = new Date().toISOString();
+  const siteUrl = await requestSiteUrl();
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
-      emailRedirectTo: `${getSiteUrl()}/auth/callback?next=/profile`,
+      emailRedirectTo: `${siteUrl}/auth/callback?next=/profile`,
       data: {
         first_name: parsed.data.firstName,
         last_name: parsed.data.lastName,
@@ -146,8 +162,9 @@ export async function forgotPasswordAction(formData: FormData) {
   }
 
   const supabase = await requireSupabase("/forgot-password");
+  const siteUrl = await requestSiteUrl();
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-    redirectTo: `${getSiteUrl()}/auth/callback?next=/reset-password`,
+    redirectTo: `${siteUrl}/auth/callback?next=/reset-password`,
   });
 
   if (error) {
