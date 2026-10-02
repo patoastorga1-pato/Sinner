@@ -14,6 +14,12 @@ const legacyAccountLinks = [
   ["Settings", "/settings"],
 ] as const;
 
+const hostToolLinks = [
+  ["Dashboard", "/host/dashboard"], ["Spaces", "/host/listings"], ["Experiences", "/host/experiences"],
+  ["Events", "/host/events"], ["Bookings", "/host/bookings"], ["Calendar", "/host/calendar"],
+  ["Messages", "/host/messages"], ["Earnings", "/host/earnings"],
+] as const;
+
 function AccountFooter() {
   return (
     <footer className="border-t hairline py-6">
@@ -43,6 +49,7 @@ export async function AccountShell({
   const isAccountCenter = eyebrow === "YOUR ACCOUNT";
 
   if (!isAccountCenter) {
+    const navigation = eyebrow === "Host tools" ? hostToolLinks : legacyAccountLinks;
     return (
       <main>
         <Header />
@@ -51,7 +58,7 @@ export async function AccountShell({
           <h1 className="mt-3 font-display text-5xl font-medium text-sinner-ivory sm:text-6xl">{title}</h1>
           <p className="mt-4 max-w-2xl leading-7 text-sinner-mist">{copy}</p>
           <nav className="soft-scrollbar mt-8 flex gap-2 overflow-x-auto border-b hairline pb-4">
-            {legacyAccountLinks.map(([label, href]) => <Link key={href} href={href} className="min-w-fit rounded-lg px-4 py-2 text-sm text-sinner-mist hover:bg-white/[0.04] hover:text-sinner-goldSoft">{label}</Link>)}
+            {navigation.map(([label, href]) => <Link key={href} href={href} className="min-w-fit rounded-lg px-4 py-2 text-sm text-sinner-mist hover:bg-white/[0.04] hover:text-sinner-goldSoft">{label}</Link>)}
           </nav>
           <div className="mt-10">{children}</div>
         </section>

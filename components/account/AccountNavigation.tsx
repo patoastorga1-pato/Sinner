@@ -15,6 +15,7 @@ import {
   MessageCircle,
   Settings,
   ShieldCheck,
+  Ticket,
   X,
 } from "lucide-react";
 import type { UserRole } from "@/lib/types/database";
@@ -22,6 +23,7 @@ import type { UserRole } from "@/lib/types/database";
 const accountLinks = [
   { label: "Overview", href: "/profile", icon: LayoutDashboard },
   { label: "Bookings", href: "/bookings", icon: BookOpenCheck },
+  { label: "Tickets", href: "/tickets", icon: Ticket },
   { label: "Messages", href: "/messages", icon: MessageCircle },
   { label: "Favorites", href: "/favorites", icon: Heart },
   { label: "Notifications", href: "/notifications", icon: Bell },

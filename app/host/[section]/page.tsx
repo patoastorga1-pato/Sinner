@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Banknote, Building2, CalendarDays, Edit3, LayoutDashboard, MessageCircle, NotebookTabs, Plus, Send, Trash2 } from "lucide-react";
+import { Banknote, Building2, CalendarDays, Edit3, LayoutDashboard, MessageCircle, NotebookTabs, PartyPopper, Plus, Send, Sparkles, Trash2 } from "lucide-react";
 import { sendMessageAction } from "@/app/actions/messages";
 import { updateHostListingStatusAction } from "@/app/actions/host";
 import { AccountShell } from "@/components/account/AccountShell";
@@ -14,6 +14,7 @@ import { canHostApprove, canHostDecline, type AppBookingStatus } from "@/lib/boo
 import { formatBookingRange } from "@/lib/bookings/time";
 import { getHostAvailabilityBlocks, getHostBookings } from "@/lib/data-access/bookings";
 import { getHostEarnings, getHostListings, listingStatusLabel, type HostListing } from "@/lib/data-access/host";
+import { getHostEvents, getHostExperiences } from "@/lib/data-access/host-content";
 import { getConversationMessages, getConversations, type ConversationMessage, type ConversationSummary } from "@/lib/data-access/messages";
 import { formatMoney } from "@/lib/marketplace/pricing";
 import type { RawSearchParams } from "@/lib/types/marketplace";
@@ -21,6 +22,8 @@ import type { RawSearchParams } from "@/lib/types/marketplace";
 const sections = {
   dashboard: { title: "Host Dashboard", copy: "A private overview of your hosting activity.", empty: "Your host workspace is ready.", detail: "Create your first listing to begin receiving booking requests.", icon: LayoutDashboard },
   listings: { title: "Host Listings", copy: "Manage draft, pending and approved spaces.", empty: "List your first space.", detail: "Create spaces, upload photos and submit them for review.", icon: Building2 },
+  experiences: { title: "Host Experiences", copy: "Create classified experiences, pricing and guest formats.", empty: "Create your first experience.", detail: "Experiences are reviewed before appearing publicly.", icon: Sparkles },
+  events: { title: "Host Events", copy: "Manage events, capacity and ticket inventory.", empty: "Create your first event.", detail: "Events and ticket types are reviewed before ticket sales open.", icon: PartyPopper },
   bookings: { title: "Host Bookings", copy: "Review requests associated with spaces you own.", empty: "No booking requests yet.", detail: "Requests will appear here after booking functionality is enabled.", icon: NotebookTabs },
   calendar: { title: "Host Calendar", copy: "Hourly availability and reservation blocks.", empty: "No availability configured.", detail: "Availability controls will appear here when calendar management is enabled.", icon: CalendarDays },
   messages: { title: "Host Messages", copy: "Private conversations linked to listings and bookings.", empty: "No host conversations yet.", detail: "Only conversation participants can access messages.", icon: MessageCircle },
@@ -146,6 +149,11 @@ function HostListingsPanel({ listings, error, success }: { listings: HostListing
       </div>
     </>
   );
+}
+
+function HostContentPanel({ kind, items, error, success }: { kind:"experience"|"event"; items:Array<{id:string;name:string;status:string;cover:string|null;city:string;state:string}>; error?:string;success?:string }) {
+  const plural=kind==="event"?"events":"experiences";
+  return <><StatusMessage error={error} success={success}/><div className="flex flex-wrap items-center justify-between gap-4"><p className="text-sm text-sinner-mist">{items.length} {plural}</p><Link href={`/host/${plural}/new`} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-sinner-gold px-4 text-sm font-semibold text-black"><Plus size={16}/>New {kind}</Link></div><div className="mt-6 grid gap-4 md:grid-cols-2">{items.map(item=><article key={item.id} className="overflow-hidden rounded-xl border hairline bg-white/[0.025]"><div className="aspect-[16/8] bg-sinner-coal bg-cover bg-center" style={item.cover?{backgroundImage:`url(${item.cover})`}:undefined}/><div className="p-5"><div className="flex items-start justify-between gap-3"><div><h2 className="font-display text-2xl text-white">{item.name}</h2><p className="mt-1 text-sm text-sinner-mist">{item.city}, {item.state}</p></div><span className={`rounded-full border px-3 py-1 text-xs capitalize ${listingStatusStyles[item.status]??listingStatusStyles.draft}`}>{item.status.replace(/_/g," ")}</span></div><Link href={`/host/${plural}/${item.id}/edit`} className="mt-5 inline-flex min-h-10 items-center gap-2 rounded-lg border border-sinner-gold/25 px-4 text-sm text-sinner-goldSoft"><Edit3 size={15}/>Edit and manage</Link></div></article>)}{!items.length?<EmptyState icon={kind==="event"?PartyPopper:Sparkles} title={`No ${plural} yet.`} copy={`Create a ${kind} draft and submit it for review.`}/>:null}</div></>;
 }
 
 function HostMessagesPanel({ conversations, selectedId, messages, error, success }: { conversations: ConversationSummary[]; selectedId: string | null; messages: ConversationMessage[]; error?: string; success?: string }) {
@@ -331,6 +339,14 @@ export default async function HostSectionPage({ params, searchParams }: { params
   if (sectionKey === "listings") {
     const listings = await getHostListings();
     return <AccountShell eyebrow="Host tools" title={section.title} copy={section.copy}><HostListingsPanel listings={listings} error={query.error as string | undefined} success={query.success as string | undefined} /></AccountShell>;
+  }
+  if (sectionKey === "experiences") {
+    const items = await getHostExperiences();
+    return <AccountShell eyebrow="Host tools" title={section.title} copy={section.copy}><HostContentPanel kind="experience" items={items} error={query.error as string|undefined} success={query.success as string|undefined}/></AccountShell>;
+  }
+  if (sectionKey === "events") {
+    const items = await getHostEvents();
+    return <AccountShell eyebrow="Host tools" title={section.title} copy={section.copy}><HostContentPanel kind="event" items={items} error={query.error as string|undefined} success={query.success as string|undefined}/></AccountShell>;
   }
   if (sectionKey === "bookings") {
     const bookings = await getHostBookings();
