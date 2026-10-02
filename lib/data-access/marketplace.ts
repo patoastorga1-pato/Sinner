@@ -28,12 +28,13 @@ const EXPERIENCE_PAGE_SIZE = 6;
 const DEFAULT_PHOTO = "/images/hero-sinner-night.png";
 
 export const experienceCategoryFilters = [
-  { slug: "couples", label: "Couples" },
-  { slug: "jacuzzi", label: "Jacuzzi" },
-  { slug: "sensory", label: "Sensory" },
-  { slug: "themed", label: "Themed" },
-  { slug: "creator", label: "Creator" },
-  { slug: "private-celebrations", label: "Private celebrations" },
+  { slug: "wellness", label: "Wellness" },
+  { slug: "dining", label: "Dining" },
+  { slug: "nightlife", label: "Nightlife" },
+  { slug: "photography", label: "Photography" },
+  { slug: "workshops", label: "Workshops" },
+  { slug: "private-entertainment", label: "Private entertainment" },
+  { slug: "tours", label: "Tours" },
 ] as const;
 
 export type ExperienceSort = "recommended" | "rating" | "price-asc" | "price-desc" | "newest";
@@ -98,6 +99,14 @@ function resolvePhotoUrl(storagePath: unknown) {
   }
   const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
   return baseUrl ? `${baseUrl}/storage/v1/object/public/space-photos/${path.replace(/^\//, "")}` : DEFAULT_PHOTO;
+}
+
+function resolveListingMediaUrl(storagePath: unknown) {
+  const path = String(storagePath ?? "").trim();
+  if (!path) return DEFAULT_PHOTO;
+  if (/^https?:\/\//i.test(path)) return path;
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+  return baseUrl ? `${baseUrl}/storage/v1/object/public/listing-media/${path.replace(/^\//, "")}` : DEFAULT_PHOTO;
 }
 
 function mapRpcCard(row: UnknownRow): SpaceCardData {
@@ -636,12 +645,19 @@ function formatEventMoney(value: number | null, currency = "MXN") {
 
 function mapExperienceRow(row: UnknownRow): Experience {
   const fallback = developmentExperiences.find((item) => item.slug === row.slug);
+  const media = asRows(row.experience_media).sort((a,b) => asNumber(a.sort_order)-asNumber(b.sort_order));
+  const cover = media.find((item) => Boolean(item.is_cover)) ?? media[0];
+  const categories = asRows(row.experience_category_links).map((item) => {
+    const category = Array.isArray(item.experience_categories) ? item.experience_categories[0] : item.experience_categories;
+    return category && typeof category === "object" ? String((category as UnknownRow).slug ?? "") : "";
+  }).filter(Boolean);
+  const lines = (value: unknown) => String(value ?? "").split("\n").map(item => item.trim()).filter(Boolean);
   return {
     id: String(row.id),
     slug: String(row.slug),
     name: String(row.name),
     description: String(row.description ?? fallback?.description ?? "A private SINNER experience."),
-    image: fallback?.image ?? "/images/experience-sensory.png",
+    image: cover ? resolveListingMediaUrl(cover.storage_path) : fallback?.image ?? "/images/experience-sensory.png",
     city: String(row.city ?? fallback?.city ?? ""),
     state: String(row.state ?? fallback?.state ?? ""),
     country: String(row.country ?? fallback?.country ?? "Mexico"),
@@ -649,14 +665,14 @@ function mapExperienceRow(row: UnknownRow): Experience {
     maxGuests: asNumber(row.max_guests, fallback?.maxGuests ?? 1),
     price: asNullableNumber(row.price) ?? fallback?.price ?? null,
     currency: String(row.currency ?? fallback?.currency ?? "MXN"),
-    categorySlugs: fallback?.categorySlugs ?? [],
+    categorySlugs: categories.length ? categories : fallback?.categorySlugs ?? [],
     instantBooking: fallback?.instantBooking ?? false,
     verifiedVenue: fallback?.verifiedVenue ?? Boolean(row.host_id),
     ratingAverage: fallback?.ratingAverage ?? null,
     reviewCount: fallback?.reviewCount ?? 0,
-    included: fallback?.included ?? [],
-    rules: fallback?.rules ?? [],
-    cancellationPolicy: fallback?.cancellationPolicy ?? null,
+    included: lines(row.what_is_included).length ? lines(row.what_is_included) : fallback?.included ?? [],
+    rules: lines(row.requirements).length ? lines(row.requirements) : fallback?.rules ?? [],
+    cancellationPolicy: row.cancellation_policy ? String(row.cancellation_policy) : fallback?.cancellationPolicy ?? null,
     createdAt: String(row.created_at ?? fallback?.createdAt ?? new Date(0).toISOString()),
   };
 }
@@ -703,7 +719,7 @@ export async function getExperiences(): Promise<Experience[]> {
   if (!supabase) return developmentExperiences;
   const { data, error } = await supabase
     .from("experiences")
-    .select("id,host_id,name,slug,description,city,state,country,duration_minutes,max_guests,price,currency,status,created_at,updated_at")
+    .select("id,host_id,name,slug,description,city,state,country,duration_minutes,max_guests,price,currency,status,what_is_included,requirements,cancellation_policy,created_at,updated_at,experience_media(storage_path,is_cover,sort_order),experience_category_links(experience_categories(slug))")
     .eq("status", "approved")
     .order("created_at", { ascending: false });
   if (error || (!data?.length && shouldUseDevelopmentFallback())) return developmentExperiences;
@@ -717,7 +733,7 @@ export async function searchExperiences(query: ExperienceSearchQuery): Promise<E
 
   const { data, error } = await supabase
     .from("experiences")
-    .select("id,host_id,name,slug,description,city,state,country,duration_minutes,max_guests,price,currency,status,created_at,updated_at")
+    .select("id,host_id,name,slug,description,city,state,country,duration_minutes,max_guests,price,currency,status,what_is_included,requirements,cancellation_policy,created_at,updated_at,experience_media(storage_path,is_cover,sort_order),experience_category_links(experience_categories(slug))")
     .eq("status", "approved")
     .order("created_at", { ascending: false });
 
@@ -771,25 +787,34 @@ export async function getEvents(): Promise<Event[]> {
   if (shouldUseDevelopmentFixtures()) return developmentEvents;
   const supabase = await createClient();
   if (!supabase) return developmentEvents;
-  const { data, error } = await supabase.from("events").select("id,name,slug,description,city,event_date,ticket_price,currency,visibility").eq("status", "approved").order("event_date", { ascending: true });
+  const { data, error } = await supabase.from("events").select("id,name,slug,description,category,city,event_date,ticket_price,currency,visibility,event_media(storage_path,is_cover,sort_order),event_ticket_types(price,quantity_total,quantity_sold,active,sort_order)").eq("status", "approved").order("event_date", { ascending: true });
   if (error || (!data?.length && shouldUseDevelopmentFallback())) return developmentEvents;
   return (data ?? []).map((row) => {
     const fallback = developmentEvents.find((item) => item.slug === row.slug);
     const eventDate = new Date(`${row.event_date}T00:00:00`);
+    const media = asRows(row.event_media).sort((a,b)=>asNumber(a.sort_order)-asNumber(b.sort_order));
+    const cover = media.find((item)=>Boolean(item.is_cover)) ?? media[0];
+    const ticketTypes = asRows(row.event_ticket_types).filter((item)=>Boolean(item.active));
+    const minimumPrice = ticketTypes.length ? Math.min(...ticketTypes.map(item=>asNumber(item.price))) : row.ticket_price;
+    const remaining = ticketTypes.reduce((total,item)=>total+Math.max(0,asNumber(item.quantity_total)-asNumber(item.quantity_sold)),0);
     return {
       id: String(row.id),
       slug: String(row.slug),
       name: String(row.name),
       date: Number.isNaN(eventDate.getTime()) ? String(row.event_date) : eventDate.toLocaleDateString("en-US", { month: "short", day: "2-digit" }),
       city: String(row.city),
-      type: fallback?.type ?? "Adult Experience",
-      price: `From ${formatEventMoney(row.ticket_price === null ? null : Number(row.ticket_price), String(row.currency ?? "MXN"))}`,
-      availability: fallback?.availability ?? "Open",
+      type: String(row.category ?? fallback?.type ?? "Event"),
+      price: `From ${formatEventMoney(minimumPrice === null ? null : Number(minimumPrice), String(row.currency ?? "MXN"))}`,
+      availability: remaining > 0 ? `${remaining} available` : fallback?.availability ?? "Open",
       badge: row.visibility === "invite_only" ? "Invite Only" : fallback?.badge ?? "Verified Event",
-      image: fallback?.image ?? DEFAULT_PHOTO,
+      image: cover ? resolveListingMediaUrl(cover.storage_path) : fallback?.image ?? DEFAULT_PHOTO,
     };
   });
 }
+
+export type PublicEventDetail = { id:string;slug:string;name:string;description:string;category:string;city:string;state:string;locality:string;venueName:string;eventDate:string;startTime:string;endTime:string;doorsOpenTime:string|null;minimumAge:number;visibility:string;image:string;cancellationPolicy:string|null;houseRules:string|null;ticketTypes:Array<{id:string;name:string;description:string|null;price:number;currency:string;remaining:number;maxPerOrder:number}> };
+export async function getEventBySlug(slug:string):Promise<PublicEventDetail|null>{const supabase=await createClient();if(!supabase)return null;const{data,error}=await supabase.from("events").select(`id,slug,name,description,category,city,state,locality,venue_name,event_date,start_time,end_time,doors_open_time,minimum_age,visibility,cancellation_policy,house_rules,event_media(storage_path,is_cover,sort_order),event_ticket_types(id,name,description,price,currency,quantity_total,quantity_sold,max_per_order,active,sort_order)`).eq("slug",slug).eq("status","approved").maybeSingle();if(error||!data)return null;const row=data as unknown as UnknownRow;const media=asRows(row.event_media).sort((a,b)=>asNumber(a.sort_order)-asNumber(b.sort_order));const cover=media.find(x=>Boolean(x.is_cover))??media[0];return{id:String(row.id),slug:String(row.slug),name:String(row.name),description:String(row.description??""),category:String(row.category??"event"),city:String(row.city??""),state:String(row.state??""),locality:String(row.locality??""),venueName:String(row.venue_name??"Venue shared with ticket holders"),eventDate:String(row.event_date),startTime:String(row.start_time).slice(0,5),endTime:String(row.end_time).slice(0,5),doorsOpenTime:row.doors_open_time?String(row.doors_open_time).slice(0,5):null,minimumAge:asNumber(row.minimum_age,18),visibility:String(row.visibility??"public"),image:cover?resolveListingMediaUrl(cover.storage_path):DEFAULT_PHOTO,cancellationPolicy:row.cancellation_policy?String(row.cancellation_policy):null,houseRules:row.house_rules?String(row.house_rules):null,ticketTypes:asRows(row.event_ticket_types).filter(x=>Boolean(x.active)).sort((a,b)=>asNumber(a.sort_order)-asNumber(b.sort_order)).map(x=>({id:String(x.id),name:String(x.name),description:x.description?String(x.description):null,price:asNumber(x.price),currency:String(x.currency??"MXN"),remaining:Math.max(0,asNumber(x.quantity_total)-asNumber(x.quantity_sold)),maxPerOrder:asNumber(x.max_per_order,1)}))};}
+export async function getMyEventTickets(){const supabase=await createClient();if(!supabase)return [];const{data:auth}=await supabase.auth.getUser();if(!auth.user)return [];const{data}=await supabase.from("event_tickets").select("id,status,ticket_code,qr_token,issued_at,used_at,events(name,event_date,start_time,city),event_ticket_types(name)").eq("user_id",auth.user.id).order("issued_at",{ascending:false});return asRows(data).map(row=>{const event=Array.isArray(row.events)?row.events[0]:row.events;const type=Array.isArray(row.event_ticket_types)?row.event_ticket_types[0]:row.event_ticket_types;return{id:String(row.id),status:String(row.status),code:String(row.ticket_code),qrToken:String(row.qr_token),issuedAt:String(row.issued_at),usedAt:row.used_at?String(row.used_at):null,eventName:String((event as UnknownRow|undefined)?.name??"Event"),eventDate:String((event as UnknownRow|undefined)?.event_date??""),startTime:String((event as UnknownRow|undefined)?.start_time??"").slice(0,5),city:String((event as UnknownRow|undefined)?.city??""),ticketType:String((type as UnknownRow|undefined)?.name??"Admission")};});}
 
 export async function getFavoriteSpaceIds() {
   if (!(await hasSupabaseAuthCookie())) return { authenticated: false, ids: [] as string[] };
